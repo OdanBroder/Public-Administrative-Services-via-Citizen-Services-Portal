@@ -1,0 +1,28 @@
+{
+  "name": "citizen-portal",
+  "version": "1.0.0",
+  "description": "Secure Citizen Services Portal using Express, React, MySQL, Post-Quantum Cryptography, and QR Authentication.",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix frontend run build",
+    "start:backend": "npm --prefix backend run start",
+    "start:frontend": "npm --prefix frontend run preview",
+    "start": "npm run dev"
+  },
+  "keywords": [
+    "citizen-services",
+    "express",
+    "react",
+    "mysql",
+    "post-quantum",
+    "FALCON",
+    "QR-authentication"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.10"
+  }
+}
