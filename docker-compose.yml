@@ -1,0 +1,86 @@
+services:
+  db:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.db
+    user: "999:999" # Run as mysql user (UID:GID for mysql user in mysql:8.0.40 image)
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=citizen_portal
+      - MYSQL_USER=citizen_user
+      - MYSQL_PASSWORD=user_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    user: "1000:1000" # Run as node user (UID:GID for node user in node:18.19.0 image)
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: npm start
+    restart: unless-stopped
+
+  frontend:
+    profiles:
+      - dev
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    user: "1000:1000" # Run as node user (UID:GID for node user in node:18 image)
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    command: npm run dev
+    restart: unless-stopped
+
+  frontend-prod:
+    profiles:
+      - prod
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    user: "101:101" # Run as nginx user (UID:GID for nginx user in nginx:alpine image)
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+    cap_add:
+      - NET_BIND_SERVICE # Allow nginx to bind to port 80 as non-root
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
