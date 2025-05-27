@@ -44,6 +44,10 @@ backend/node_modules/
 frontend/node_modules/
 jspm_packages/
 package-lock.json
+certificate.crt
+ca_bundle.crt
+ec-private-key.pem
+ec-public-key.pem
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
