@@ -2,17 +2,38 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import exampleRoute from './routes/exampleRoute.js';
+import authRoutes from './routes/auth.js';
+import { initializeDatabase } from './config/database.js';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// CORS configuration
+const corsOptions = {
+  origin: '*', // Allow all origins during development
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+// Middleware
+app.use(cors(corsOptions));
 app.use(express.json());
 
-app.use('/api/example', exampleRoute);
+// Routes
+app.use('/api/auth', authRoutes);
 
-const PORT = process.env.PORT || 3000;
+// Initialize database
+initializeDatabase();
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });

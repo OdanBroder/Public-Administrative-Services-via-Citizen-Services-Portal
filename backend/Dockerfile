@@ -1,28 +1,18 @@
-FROM node:18.19.0
-
-RUN apt-get update && apt-get install -y \
-    libffi-dev \
-    python3 \
-    python3-dev \
-    make \
-    g++ \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+# Copy package files
+COPY package*.json ./
 
-RUN npm install
+# Install dependencies
+RUN npm install --production=false
 
+# Copy the rest of the application
 COPY . .
 
-# Set ownership to node user (UID 1000)
-RUN chown -R node:node /app
+# Expose the port
+EXPOSE 5000
 
-# Switch to node user (non-root)
-USER node
-
-EXPOSE 3000
-
-CMD ["node", "app.js"]
+# Start the application
+CMD ["npm", "run", "dev"]

@@ -1,25 +1,18 @@
-FROM node:18
-
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+# Copy package files
+COPY package*.json ./
 
+# Install dependencies
 RUN npm install
 
+# Copy the rest of the application
 COPY . .
 
-# Set ownership to node user (UID 1000)
-RUN chown -R node:node /app
-
-# Switch to node user (non-root)
-USER node
-
+# Expose the port
 EXPOSE 5173
 
+# Start the development server
 CMD ["npm", "run", "dev"]
