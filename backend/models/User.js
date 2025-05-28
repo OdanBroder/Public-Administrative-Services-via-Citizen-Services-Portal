@@ -68,4 +68,9 @@ User.findByEmail = async function(email) {
   return this.findOne({ where: { email: email.toLowerCase() } });
 };
 
+// Static method to find user by username
+User.findByUsername = async function(username) {
+  return this.findOne({ where: { username: username.toLowerCase() } });
+};
+
 export default User; 

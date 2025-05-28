@@ -3,34 +3,19 @@ services:
     image: mysql:8.0
     container_name: citizen-services-mysql
     restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: citizen_services
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_INNODB_BUFFER_POOL_SIZE: 256M
-      MYSQL_INNODB_LOG_FILE_SIZE: 64M
-      MYSQL_INNODB_LOG_BUFFER_SIZE: 16M
-      MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT: 2
-      MYSQL_INNODB_FLUSH_METHOD: O_DIRECT
+    env_file:
+      - ./backend/.env
     command: >
       --default-authentication-plugin=mysql_native_password
-      --host-cache-size=0
-      --pid-file=/var/lib/mysql/mysqld.pid
-      --innodb_force_recovery=0
-      --innodb_checksum_algorithm=crc32
-      --innodb_log_file_size=64M
-      --innodb_buffer_pool_size=256M
-      --innodb_log_buffer_size=16M
-      --innodb_flush_log_at_trx_commit=2
-      --innodb_flush_method=O_DIRECT
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -44,19 +29,17 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    env_file:
+      - ./backend/.env
+      - ./frontend/.env
     environment:
-      - DB_HOST=mysql
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_PORT=3306
-      - JWT_SECRET=${JWT_SECRET}
-      - PORT=5000
-      - CORS_ORIGIN=https://localhost
       - NODE_ENV=development
+      - PORT=5000
+      - DB_HOST=mysql
+      - DB_PORT=3306
     volumes:
       - ./backend:/app
-      - /app/node_modules
+      - backend_node_modules:/app/node_modules
     networks:
       - app-network
 
@@ -68,12 +51,13 @@ services:
     restart: always
     depends_on:
       - backend
+    env_file:
+      - ./frontend/.env
+    environment:
+      - NODE_ENV=development
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=https://localhost/api
-      - NODE_ENV=development
+      - frontend_node_modules:/app/node_modules
     networks:
       - app-network
 
@@ -103,3 +87,4 @@ networks:
 volumes:
   mysql_data:
   backend_node_modules:
+  frontend_node_modules:

@@ -1,39 +1,65 @@
 // backend/app.js
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import authRoutes from './routes/auth.js';
+import config from './config/config.js';
 import { initializeDatabase } from './config/database.js';
-
-dotenv.config();
+import authRoutes from './routes/auth.js';
 
 const app = express();
 
-// CORS configuration
-const corsOptions = {
-  origin: '*', // Allow all origins during development
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-
 // Middleware
-app.use(cors(corsOptions));
+app.use(cors({
+    origin: config.cors.origin,
+    credentials: config.cors.credentials
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
 
-// Initialize database
-initializeDatabase();
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+    console.error(err.stack);
+    res.status(500).json({
+        error: 'Something went wrong!',
+        message: config.nodeEnv === 'development' ? err.message : undefined
+    });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Initialize database and start server
+const startServer = async () => {
+    try {
+        // Initialize database
+        await initializeDatabase();
+
+        // Start server
+        const port = config.port;
+        app.listen(port, () => {
+            console.log(`✅ Server is running on port ${port}`);
+            console.log(`✅ Environment: ${config.nodeEnv}`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    process.exit(1);
 });
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+});
+
+startServer();
