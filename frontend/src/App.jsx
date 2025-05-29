@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import Profile from './components/Profile';
-
+import CitizenForm from './components/BasicInfo';
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
@@ -34,6 +34,11 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/basicinfo" element={
+            <ProtectedRoute>
+              <CitizenForm/>
+            </ProtectedRoute>
+          }></Route>
           <Route path="/" element={<Navigate to="/profile" />} />
         </Routes>
       </Router>

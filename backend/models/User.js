@@ -13,7 +13,7 @@ const User = sequelize.define('User', {
     allowNull: false,
     unique: true,
     validate: {
-      len: [3, 50]
+      len: [2, 50]
     }
   },
   email: {
@@ -68,9 +68,8 @@ User.findByEmail = async function(email) {
   return this.findOne({ where: { email: email.toLowerCase() } });
 };
 
-// Static method to find user by username
-User.findByUsername = async function(username) {
-  return this.findOne({ where: { username: username.toLowerCase() } });
-};
+User.findByUsername = async function (username){
+  return this.findOne({ where: {username: username}});
+}
 
 export default User; 

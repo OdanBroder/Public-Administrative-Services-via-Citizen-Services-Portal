@@ -57,7 +57,14 @@ services:
       - NODE_ENV=development
     volumes:
       - ./frontend:/app
+<<<<<<< HEAD
       - frontend_node_modules:/app/node_modules
+=======
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=https://localhost:443/api
+      - NODE_ENV=development
+>>>>>>> 63be899 (Fixed profile, update, login. Added submit basic information)
     networks:
       - app-network
 
@@ -66,8 +73,8 @@ services:
     container_name: citizen-services-nginx
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - "8000:80"
+      - "44300:443"
     volumes:
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
       - ./frontend/dist:/usr/share/nginx/html
@@ -87,4 +94,7 @@ networks:
 volumes:
   mysql_data:
   backend_node_modules:
+<<<<<<< HEAD
   frontend_node_modules:
+=======
+>>>>>>> 63be899 (Fixed profile, update, login. Added submit basic information)

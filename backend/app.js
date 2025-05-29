@@ -3,7 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import config from './config/config.js';
 import { initializeDatabase } from './config/database.js';
-import authRoutes from './routes/auth.js';
+import citizenRoutes from './routes/citizen.js'
+dotenv.config();
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
-
+app.use('/api/citizen', citizenRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

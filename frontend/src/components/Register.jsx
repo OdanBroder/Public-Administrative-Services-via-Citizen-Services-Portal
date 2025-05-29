@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
 const Register = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -24,6 +23,32 @@ const Register = () => {
     }));
   };
 
+  function isStrongPassword(password) {
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasDigit = /[0-9]/.test(password);
+    const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+    const isLongEnough = password.length >= 12;
+
+    return (
+      hasLowercase &&
+      hasUppercase &&
+      hasDigit &&
+      hasSpecialChar &&
+      isLongEnough
+    );
+  }
+
+  function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  function isValidUsername(username){
+    const allowedPattern = /^[a-zA-Z0-9_-]+$/;
+    return typeof username === 'string' && allowedPattern.test(username);
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -31,6 +56,15 @@ const Register = () => {
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
+    }
+
+    if(!isStrongPassword(formData.password)){
+      setError('Please use a strong password.\nA strong password should include:\nAt least 1 uppercase\nAt least 1 lowercase\nAt least 1 number\nAt least 1 special character\nTotal at least 12 characters');
+      return;
+    }
+
+    if(!isValidUsername(formData.username)){
+      setError("Username should contain numeric character, alphabet character and \"-\", \"_\" only");
     }
 
     setLoading(true);
@@ -138,7 +172,7 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600! hover:bg-indigo-700! focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
