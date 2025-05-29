@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://localhost/api';
-
+// const API_URL = import.meta.env.VITE_API_URL || 'https://localhost/api';
+const API_URL = "/api";
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_URL,

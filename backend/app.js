@@ -4,6 +4,8 @@ import cors from 'cors';
 import config from './config/config.js';
 import { initializeDatabase } from './config/database.js';
 import citizenRoutes from './routes/citizen.js'
+import authRoutes from './routes/auth.js';
+import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
