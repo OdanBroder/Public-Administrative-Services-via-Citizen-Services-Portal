@@ -1,10 +1,10 @@
 FROM mysql:8.0.40
 
 # Set environment variables with default values
-ENV MYSQL_ROOT_PASSWORD=root_password \
-    MYSQL_DATABASE=citizen_portal \
-    MYSQL_USER=citizen_user \
-    MYSQL_PASSWORD=citizen_password
+# ENV MYSQL_ROOT_PASSWORD=root_password \
+#     MYSQL_DATABASE=citizen_portal \
+#     MYSQL_USER=citizen_user \
+#     MYSQL_PASSWORD=citizen_password
 
 # Copy initialization scripts
 COPY database/init.sql /docker-entrypoint-initdb.d/01-init.sql

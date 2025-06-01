@@ -20,10 +20,11 @@ CREATE TABLE IF NOT EXISTS users (
     last_login_at TIMESTAMP NULL,
     refreshToken VARCHAR(255),
     resetToken VARCHAR(255),
-    resetTokenExpiry DATETIME;
+    resetTokenExpiry DATETIME,
     PRIMARY KEY (id),
     UNIQUE KEY idx_email (email)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
 CREATE INDEX idx_users_created_at ON users (created_at);
 
 -- Create services table
