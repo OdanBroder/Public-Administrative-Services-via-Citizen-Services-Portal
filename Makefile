@@ -73,19 +73,19 @@ dev-logs:
 # Build production services
 prod-build:
 	@echo "Building production services..."
-	docker compose build frontend-prod backend
+	docker compose build nginx backend
 
 # Start production services
 prod-up:
 	@echo "Starting production services..."
-	docker compose up -d frontend-prod backend mysql
+	docker compose up -d nginx backend mysql
 
 # Stop production services
 prod-down:
 	@echo "Stopping production services..."
-	docker compose stop frontend-prod backend
+	docker compose stop nginx backend
 
 # Show production logs
 prod-logs:
 	@echo "Showing production logs..."
-	docker compose logs -f frontend-prod backend
+	docker compose logs -f nginx backend
