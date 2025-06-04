@@ -30,18 +30,14 @@ const Navbar = ({ user }) => { // Pass user and handlers as props
 
           {/* Center */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            <Link
-              to="/services"
-              className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-            >
-              Submit an application
-            </Link>
-            <Link
-              to="/applications"
-              className="px-3 py-2 rounded-md text-md font-medium  text-yellow-100 hover:text-theme-text-nav-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-            >
-              View application status
-            </Link>
+            {user && (
+              <Link
+                to="/medical-coverage"
+                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+              >
+                Medical Coverage  
+              </Link>
+            )}
           </div>
 
           {/* Right Side */}

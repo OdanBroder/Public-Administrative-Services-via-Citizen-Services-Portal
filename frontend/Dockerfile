@@ -20,6 +20,6 @@ USER appuser
 
 # Expose the port
 EXPOSE 5173
-# CMD ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+
 # Start the development server
 CMD ["npm", "run", "dev"]

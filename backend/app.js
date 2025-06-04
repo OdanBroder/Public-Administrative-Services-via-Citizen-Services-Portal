@@ -1,6 +1,8 @@
 // backend/app.js
 import express from 'express';
 import cors from 'cors';
+import medicalCoverageRoutes from './routes/medicalCoverageRoutes.js';
+import serviceHealthRoutes from './routes/serviceHealthRoutes.js';
 import config from './config/config.js';
 import { initializeDatabase } from './config/database.js';
 import citizenRoutes from './routes/citizen.js'
@@ -21,6 +23,8 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/citizen', citizenRoutes);
+app.use('/api/medical-coverage', medicalCoverageRoutes);
+app.use('/api/service-health', serviceHealthRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
@@ -66,3 +70,5 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 startServer();
+
+export default app;

@@ -59,6 +59,9 @@ const Citizen = sequelize.define("Citizen", {
     allowNull: false,
     field: "noi_thuong_tru",
   },
+}, {
+  tableName: 'citizens',
+  timestamps: true
 });
 
 export default Citizen;

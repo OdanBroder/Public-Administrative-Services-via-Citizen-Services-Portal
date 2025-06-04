@@ -40,4 +40,5 @@ const auth = async (req, res, next) => {
   }
 };
 
+export { auth as authenticateToken };
 export default auth; 

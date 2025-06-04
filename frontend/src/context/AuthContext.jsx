@@ -13,6 +13,20 @@ const api = axios.create({
   },
 });
 
+// Add request interceptor to add token to all requests
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -30,9 +44,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = async (token) => {
     try {
-      const response = await api.get('/auth/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/auth/profile');
       setUser(response.data);
     } catch (error) {
       localStorage.removeItem('accessToken');
@@ -90,12 +102,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (updates) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await api.patch('/auth/profile', updates, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.patch('/auth/profile', updates);
       setUser(response.data);
       return { success: true };
     } catch (error) {
@@ -115,6 +122,7 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         updateProfile,
+        api
       }}
     >
       {children}

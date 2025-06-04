@@ -5,6 +5,10 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Profile from './components/Profile';
 import CitizenForm from './components/BasicInfo';
+import MedicalCoverage from './components/MedicalCoverage';
+import Navbar from './components/NavBar';
+import Banner from './components/Banner';
+
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
@@ -19,10 +23,14 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-const App = () => {
+const AppContent = () => {
+  const { user } = useAuth();
+
   return (
-    <AuthProvider>
-      <Router>
+    <div className="min-h-screen bg-gray-50">
+      <Banner />
+      <Navbar user={user} />
+      <div className="container mx-auto px-4 py-8">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -34,13 +42,34 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/basicinfo" element={
-            <ProtectedRoute>
-              <CitizenForm/>
-            </ProtectedRoute>
-          }></Route>
+          <Route
+            path="/basicinfo"
+            element={
+              <ProtectedRoute>
+                <CitizenForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/medical-coverage"
+            element={
+              <ProtectedRoute>
+                <MedicalCoverage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/" element={<Navigate to="/profile" />} />
         </Routes>
+      </div>
+    </div>
+  );
+};
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
       </Router>
     </AuthProvider>
   );

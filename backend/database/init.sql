@@ -50,6 +50,37 @@ CREATE TABLE IF NOT EXISTS applications (
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
+-- Create medical_coverage table
+CREATE TABLE IF NOT EXISTS medical_coverage (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    citizen_id VARCHAR(255) NOT NULL,
+    coverage_type ENUM('BASIC', 'STANDARD', 'PREMIUM') NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    monthly_premium DECIMAL(10, 2) NOT NULL,
+    status ENUM('ACTIVE', 'EXPIRED', 'CANCELLED') NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (citizen_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_citizen_id (citizen_id),
+    INDEX idx_status (status)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Create service_health table
+CREATE TABLE IF NOT EXISTS service_health (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    service_name VARCHAR(255) NOT NULL,
+    status ENUM('UP', 'DOWN', 'DEGRADED') NOT NULL,
+    response_time INT NOT NULL,
+    last_checked TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    uptime DECIMAL(5, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY idx_service_name (service_name),
+    INDEX idx_status (status),
+    INDEX idx_last_checked (last_checked)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
 -- Create user_qr table
 CREATE TABLE IF NOT EXISTS user_qr (
     id INT NOT NULL AUTO_INCREMENT,
@@ -123,7 +154,6 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     KEY idx_ip_address (ip_address),
     KEY idx_attempted_at (attempted_at)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
 
 CREATE TABLE IF NOT EXISTS jwt_blacklist (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

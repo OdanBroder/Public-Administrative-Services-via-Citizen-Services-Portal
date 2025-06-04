@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
-import Banner from "./Banner";
-import Navbar from "./NavBar";
 
 const CitizenForm = () => {
   const {user} = useAuth();
@@ -162,314 +160,309 @@ const CitizenForm = () => {
   );
 
   return (
-    <div >
-      <Banner></Banner>
-      <Navbar user={user}></Navbar>
-      <div className="flex items-center justify-center w-h-full">
-        <div className="min-h-screen bg-gray-50 py-8 flex item-center justify-center">
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
-            <h1 className="text-2xl font-bold text-center text-blue-800 mb-6">
-              Cổng Thông Tin Dịch Vụ Công Dân
-            </h1>
+    <div className="flex items-center justify-center w-h-full">
+      <div className="min-h-screen bg-gray-50 py-8 flex item-center justify-center">
+        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
+          <h1 className="text-2xl font-bold text-center text-blue-800 mb-6">
+            Cổng Thông Tin Dịch Vụ Công Dân
+          </h1>
 
-            {submitStatus.message && (
-              <div
-                className={`mb-4 p-4 rounded-md ${
-                  submitStatus.type === "success"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {submitStatus.message}
-              </div>
-            )}
+          {submitStatus.message && (
+            <div
+              className={`mb-4 p-4 rounded-md ${
+                submitStatus.type === "success"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+              }`}
+            >
+              {submitStatus.message}
+            </div>
+          )}
 
-            <form onSubmit={handleFormClick} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Họ và Tên */}
-                <div>
-                  <label
-                    htmlFor="hoVaTen"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Họ và Tên <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="hoVaTen"
-                    name="hoVaTen"
-                    value={formData.hoVaTen}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Số CCCD */}
-                <div>
-                  <label
-                    htmlFor="soCCCD"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Số căn cước công dân (CCCD){" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="soCCCD"
-                    name="soCCCD"
-                    value={formData.soCCCD}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Nơi cấp CCCD */}
-                <div>
-                  <label
-                    htmlFor="noiCapCCCD"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Nơi cấp CCCD <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="noiCapCCCD"
-                    name="noiCapCCCD"
-                    value={formData.noiCapCCCD}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Ngày cấp CCCD */}
-                <div>
-                  <label
-                    htmlFor="ngayCapCCCD"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Ngày cấp CCCD <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    id="ngayCapCCCD"
-                    name="ngayCapCCCD"
-                    value={formData.ngayCapCCCD}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Ngày sinh */}
-                <div>
-                  <label
-                    htmlFor="ngaySinh"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Ngày sinh <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    id="ngaySinh"
-                    name="ngaySinh"
-                    value={formData.ngaySinh}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Giới tính */}
-                <div>
-                  <label
-                    htmlFor="gioiTinh"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Giới tính <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="gioiTinh"
-                    name="gioiTinh"
-                    value={formData.gioiTinh}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
-                    <option value="Khác">Khác</option>
-                  </select>
-                </div>
-
-                {/* Quê quán */}
-                <div>
-                  <label
-                    htmlFor="queQuan"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Quê quán <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="queQuan"
-                    name="queQuan"
-                    value={formData.queQuan}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Nơi thường trú */}
-                <div>
-                  <label
-                    htmlFor="noiThuongTru"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Nơi thường trú <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="noiThuongTru"
-                    name="noiThuongTru"
-                    value={formData.noiThuongTru}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Hình ảnh CCCD - Mặt trước */}
+          <form onSubmit={handleFormClick} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Họ và Tên */}
               <div>
                 <label
-                  htmlFor="hinhAnhCCCDTruoc"
+                  htmlFor="hoVaTen"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Hình ảnh CCCD - Mặt trước{" "}
+                  Họ và Tên <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="hoVaTen"
+                  name="hoVaTen"
+                  value={formData.hoVaTen}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Số CCCD */}
+              <div>
+                <label
+                  htmlFor="soCCCD"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Số căn cước công dân (CCCD){" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="file"
-                  id="hinhAnhCCCDTruoc"
-                  name="hinhAnhCCCDTruoc"
-                  accept="image/*"
-                  onChange={handleFileChange}
+                  type="text"
+                  id="soCCCD"
+                  name="soCCCD"
+                  value={formData.soCCCD}
+                  onChange={handleChange}
+                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-
-                {previewUrls.hinhAnhCCCDTruoc && (
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500 mb-1">
-                      Xem trước mặt trước:
-                    </p>
-                    <img
-                      src={previewUrls.hinhAnhCCCDTruoc}
-                      alt="CCCD Mặt trước Preview"
-                      className="max-h-40 border rounded-md"
-                    />
-                  </div>
-                )}
               </div>
 
-              {/* Hình ảnh CCCD - Mặt sau */}
+              {/* Nơi cấp CCCD */}
               <div>
                 <label
-                  htmlFor="hinhAnhCCCDSau"
+                  htmlFor="noiCapCCCD"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Hình ảnh CCCD - Mặt sau{" "}
-                  <span className="text-red-500">*</span>
+                  Nơi cấp CCCD <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="file"
-                  id="hinhAnhCCCDSau"
-                  name="hinhAnhCCCDSau"
-                  accept="image/*"
-                  onChange={handleFileChange}
+                  type="text"
+                  id="noiCapCCCD"
+                  name="noiCapCCCD"
+                  value={formData.noiCapCCCD}
+                  onChange={handleChange}
+                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-
-                {previewUrls.hinhAnhCCCDSau && (
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500 mb-1">
-                      Xem trước mặt sau:
-                    </p>
-                    <img
-                      src={previewUrls.hinhAnhCCCDSau}
-                      alt="CCCD Mặt sau Preview"
-                      className="max-h-40 border rounded-md"
-                    />
-                  </div>
-                )}
               </div>
 
-              <div className="flex justify-center">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`px-6 py-2 bg-indigo-600! text-white font-medium rounded-md hover:bg-indigo-700! focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                    isSubmitting ? "opacity-70 cursor-not-allowed" : ""
-                  }`}
+              {/* Ngày cấp CCCD */}
+              <div>
+                <label
+                  htmlFor="ngayCapCCCD"
+                  className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  {isSubmitting ? "Đang xử lý..." : "Gửi thông tin"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-        {showConfirmation && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 transition-opacity duration-300 ease-in-out">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full transform transition-all duration-300 ease-out scale-95">
-              {/* Header */}
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Xác nhận thông tin
-                </h2>
-                <p className="mt-2 text-sm text-gray-600">
-                  Vui lòng kiểm tra kỹ các thông tin dưới đây trước khi gửi.
-                </p>
+                  Ngày cấp CCCD <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  id="ngayCapCCCD"
+                  name="ngayCapCCCD"
+                  value={formData.ngayCapCCCD}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
-              {/* Data List with improved structure for readability */}
-              <div className="border-t border-b border-gray-200 divide-y divide-gray-200 mb-6">
-                <dl className="divide-y divide-gray-200">
-                  {renderListItem("Họ và tên", formData.hoVaTen)}
-                  {renderListItem("Số CCCD", formData.soCCCD)}
-                  {renderListItem("Nơi cấp", formData.noiCapCCCD)}
-                  {renderListItem("Ngày cấp", formData.ngayCapCCCD)}
-                  {renderListItem("Ngày sinh", formData.ngaySinh)}
-                  {renderListItem("Giới tính", formData.gioiTinh)}
-                  {renderListItem("Quê quán", formData.queQuan)}
-                  {renderListItem("Nơi thường trú", formData.noiThuongTru)}
-                </dl>
+              {/* Ngày sinh */}
+              <div>
+                <label
+                  htmlFor="ngaySinh"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Ngày sinh <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  id="ngaySinh"
+                  name="ngaySinh"
+                  value={formData.ngaySinh}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmation(false)}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+              {/* Giới tính */}
+              <div>
+                <label
+                  htmlFor="gioiTinh"
+                  className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Quay lại
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmSubmission}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  Giới tính <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="gioiTinh"
+                  name="gioiTinh"
+                  value={formData.gioiTinh}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  Xác nhận & Gửi
-                </button>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+
+              {/* Quê quán */}
+              <div>
+                <label
+                  htmlFor="queQuan"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Quê quán <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="queQuan"
+                  name="queQuan"
+                  value={formData.queQuan}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Nơi thường trú */}
+              <div>
+                <label
+                  htmlFor="noiThuongTru"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Nơi thường trú <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="noiThuongTru"
+                  name="noiThuongTru"
+                  value={formData.noiThuongTru}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
-            {/* Add this to your global CSS or a <style jsx global> tag if using Next.js */}
-          </div>
-        )}
+
+            {/* Hình ảnh CCCD - Mặt trước */}
+            <div>
+              <label
+                htmlFor="hinhAnhCCCDTruoc"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Hình ảnh CCCD - Mặt trước{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                id="hinhAnhCCCDTruoc"
+                name="hinhAnhCCCDTruoc"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {previewUrls.hinhAnhCCCDTruoc && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 mb-1">
+                    Xem trước mặt trước:
+                  </p>
+                  <img
+                    src={previewUrls.hinhAnhCCCDTruoc}
+                    alt="CCCD Mặt trước Preview"
+                    className="max-h-40 border rounded-md"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Hình ảnh CCCD - Mặt sau */}
+            <div>
+              <label
+                htmlFor="hinhAnhCCCDSau"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Hình ảnh CCCD - Mặt sau{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                id="hinhAnhCCCDSau"
+                name="hinhAnhCCCDSau"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {previewUrls.hinhAnhCCCDSau && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 mb-1">
+                    Xem trước mặt sau:
+                  </p>
+                  <img
+                    src={previewUrls.hinhAnhCCCDSau}
+                    alt="CCCD Mặt sau Preview"
+                    className="max-h-40 border rounded-md"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`px-6 py-2 bg-indigo-600! text-white font-medium rounded-md hover:bg-indigo-700! focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+              >
+                {isSubmitting ? "Đang xử lý..." : "Gửi thông tin"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
+      {showConfirmation && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 transition-opacity duration-300 ease-in-out">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full transform transition-all duration-300 ease-out scale-95">
+            {/* Header */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Xác nhận thông tin
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Vui lòng kiểm tra kỹ các thông tin dưới đây trước khi gửi.
+              </p>
+            </div>
+
+            {/* Data List with improved structure for readability */}
+            <div className="border-t border-b border-gray-200 divide-y divide-gray-200 mb-6">
+              <dl className="divide-y divide-gray-200">
+                {renderListItem("Họ và tên", formData.hoVaTen)}
+                {renderListItem("Số CCCD", formData.soCCCD)}
+                {renderListItem("Nơi cấp", formData.noiCapCCCD)}
+                {renderListItem("Ngày cấp", formData.ngayCapCCCD)}
+                {renderListItem("Ngày sinh", formData.ngaySinh)}
+                {renderListItem("Giới tính", formData.gioiTinh)}
+                {renderListItem("Quê quán", formData.queQuan)}
+                {renderListItem("Nơi thường trú", formData.noiThuongTru)}
+              </dl>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirmation(false)}
+                className="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+              >
+                Quay lại
+              </button>
+              <button
+                type="button"
+                onClick={confirmSubmission}
+                className="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                Xác nhận & Gửi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
