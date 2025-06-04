@@ -3,16 +3,21 @@ import Citizen from '../models/Citizen.js';
 import {upload} from '../config/multerConfig.js';
 import express from 'express';
 const router = express.Router();
+import User from '../models/User.js';
+
 
 router.post("/", auth, (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
       console.error("Multer error:", err);
-      return res.status(400).json({ msg: "Error uploading file", error: err });
+      return res.status(400).json({ msg: "Error uploading files", error: err });
     }
 
-    if (req.file == undefined) {
-      return res.status(400).json({ msg: "Error: No File Selected!" });
+    // Check if both front and back images are provided
+    if (!req.files || !req.files.hinhAnhCCCDTruoc || !req.files.hinhAnhCCCDSau) {
+      return res.status(400).json({ 
+        msg: "Error: Both front and back CCCD images are required!" 
+      });
     }
 
     const {
@@ -40,13 +45,14 @@ router.post("/", auth, (req, res) => {
       // Consider deleting the uploaded file if validation fails
       return res.status(400).json({ msg: "Please fill in all fields" });
     }
-    const id = req.user.id;
+    const id = req.user.userId;
     try {
       const newCitizen = await Citizen.create({
-        id,
+        id: req.user.userId, // UUID generated in multer config
         hoVaTen,
         soCCCD,
-        hinhAnhCCCD: req.file.path, // Save the file path
+        hinhAnhCCCDTruoc: req.files.hinhAnhCCCDTruoc[0].path,
+        hinhAnhCCCDSau: req.files.hinhAnhCCCDSau[0].path,
         noiCapCCCD,
         ngayCapCCCD,
         ngaySinh,
@@ -54,10 +60,19 @@ router.post("/", auth, (req, res) => {
         queQuan,
         noiThuongTru,
       });
+      await User.update({
+        completedProfile: true
+      },
+      {
+        where:{
+          id: id
+        }
+      })
       res.status(201).json({
         msg: "Citizen record created successfully",
         citizen: newCitizen,
-        filePath: `/uploads/${req.file.filename}` // Optionally return relative path for frontend use
+        frontImagePath: `/uploads/${req.files.hinhAnhCCCDTruoc[0].filename}`,
+        backImagePath: `/uploads/${req.files.hinhAnhCCCDSau[0].filename}`
       });
     } catch (error) {
       console.error("Database error:", error);

@@ -1,0 +1,13 @@
+// This is for VSCode to analyse typescript AND javascript code
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",     // or "react" if you're using React <17
+    "allowJs": true,
+    "checkJs": true,        // enables type-checking for JS files
+    "module": "esnext",
+    "target": "esnext",
+    "moduleResolution": "node"
+  },
+  "include": ["./"],
+  "exclude": ["backend"]
+}

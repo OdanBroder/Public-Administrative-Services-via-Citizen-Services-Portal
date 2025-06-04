@@ -19,10 +19,15 @@ const Citizen = sequelize.define("Citizen", {
     unique: true,
     field: "so_cccd",
   },
-  hinhAnhCCCD: {
-    type: DataTypes.STRING, // Store the path to the image
+  hinhAnhCCCDTruoc: {
+    type: DataTypes.STRING, // Store the path to the front image
     allowNull: false,
-    field: "hinh_anh_cccd",
+    field: "hinh_anh_cccd_truoc",
+  },
+  hinhAnhCCCDSau: {
+    type: DataTypes.STRING, // Store the path to the back image
+    allowNull: false,
+    field: "hinh_anh_cccd_sau",
   },
   noiCapCCCD: {
     type: DataTypes.STRING,

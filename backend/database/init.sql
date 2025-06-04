@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     refreshToken VARCHAR(255),
     resetToken VARCHAR(255),
     resetTokenExpiry DATETIME,
+    complete_profile BOOLEAN DEFAULT false,
     PRIMARY KEY (id),
     UNIQUE KEY idx_email (email)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
@@ -122,3 +123,29 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     KEY idx_ip_address (ip_address),
     KEY idx_attempted_at (attempted_at)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS jwt_blacklist (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    -- Store the full token string that needs to be invalidated.
+    -- Using TEXT allows for variable length tokens without strict limits.
+    token TEXT NOT NULL,
+    -- Store the expiration timestamp of the token (extracted from the token payload).
+    -- This allows for efficient cleanup of old entries.
+    expires_at TIMESTAMP NOT NULL,
+    -- Timestamp when the token was added to the blacklist.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Index on the token for fast lookups during authentication checks.
+    -- Indexing a prefix of TEXT columns is common for performance. 255 is usually a safe prefix length.
+    INDEX idx_token (token(255)),
+
+    -- Index on expires_at for efficient cleanup of expired tokens.
+    INDEX idx_expires_at (expires_at)
+);
+
+-- This event runs daily to remove expired tokens from the blacklist.
+CREATE EVENT cleanup_jwt_blacklist
+ON SCHEDULE EVERY 1 DAY
+DO
+  DELETE FROM jwt_blacklist WHERE expires_at < NOW()

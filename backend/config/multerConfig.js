@@ -7,7 +7,7 @@ const storage = multer.diskStorage({
   destination: "./uploads/",
   filename: function (req, file, cb) {
     // Generate UUID if not already in request
-    if (req.user.id === "" || req.user.id === undefined) {
+    if (req.user.userId === "" || req.user.userId === undefined) {
       throw new Error("Empty id");
     }
     
@@ -15,7 +15,7 @@ const storage = multer.diskStorage({
     const suffix = file.fieldname === "hinhAnhCCCDTruoc" ? "-1" : "-2";
     
     // Create filename with UUID and suffix
-    const filename = `CCCD-${req.user.id}${suffix}${path.extname(file.originalname)}`;
+    const filename = `CCCD-${req.user.userId}${suffix}${path.extname(file.originalname)}`;
     
     cb(null, filename);
   },

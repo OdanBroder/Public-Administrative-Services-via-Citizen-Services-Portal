@@ -46,6 +46,11 @@ const User = sequelize.define('User', {
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  completeProfile:{
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: "complete_profile"
   }
 }, {
   hooks: {
@@ -70,6 +75,24 @@ User.findByEmail = async function(email) {
 
 User.findByUsername = async function (username){
   return this.findOne({ where: {username: username}});
-}
+} 
+
+User.hasFinishedProfile = async function (username) {
+  const completed = await this.findOne({
+    where: { username },
+    attributes: ['completeProfile'],
+  });
+
+  return completed?.completeProfile === true;
+};
+
+User.hasFinishedProfilePk = async function (pKey) {
+  const completed = await this.findOne({
+    where: { id: pKey },
+    attributes: ['completeProfile'],
+  });
+
+  return completed?.completeProfile === true;
+};
 
 export default User; 

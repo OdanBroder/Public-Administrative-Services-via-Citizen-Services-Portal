@@ -113,7 +113,7 @@ router.post('/login', async (req, res) => {
 
     // Store refresh token in user record
     await user.update({ refreshToken });
-
+    const completedProfile = await User.hasFinishedProfile(user.username);
     res.json({
       accessToken,
       refreshToken,
@@ -123,63 +123,56 @@ router.post('/login', async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role,
+        completedProfile: completedProfile
       }
     });
+    console.log(completedProfile.toString());
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// Logout
+
+// Refresh Token
 router.post('/logout', auth, async (req, res) => {
   try {
+    const token = req.token; // Token is attached by the auth middleware
     const user = await User.findByPk(req.user.userId);
+
+    // 1. Clear the refresh token (existing logic)
     if (user) {
       await user.update({ refreshToken: null });
     }
+
+    // 2. Add the access token to the blacklist
+    if (token) {
+      try {
+        // Decode the token to get the expiration time (exp)
+        // Use ignoreExpiration: true because the token might be expired already,
+        // but we still want to blacklist it to prevent reuse if expiration check was somehow bypassed.
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
+        const expiresAt = new Date(decoded.exp * 1000); // Convert Unix timestamp to Date
+
+        // Add token to blacklist
+        await BlacklistedToken.create({
+          token: token,
+          expires_at: expiresAt
+        });
+
+      } catch (jwtError) {
+        // Handle cases where the token is invalid (e.g., malformed, wrong signature)
+        // We might still want to proceed with logout, but log the error.
+        console.error('Error decoding or blacklisting token:', jwtError.message);
+        // Optionally, you could return an error here if blacklisting is critical
+        return res.status(400).json({ error: 'Invalid token provided for logout.' });
+      }
+    }
+
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Refresh Token
-router.post('/refresh-token', async (req, res) => {
-  try {
-    const { refreshToken } = req.body;
-    
-    if (!refreshToken) {
-      return res.status(400).json({ error: 'Refresh token is required' });
-    }
-
-    // Verify refresh token
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    
-    // Find user
-    const user = await User.findByPk(decoded.userId);
-    if (!user || user.refreshToken !== refreshToken) {
-      return res.status(401).json({ error: 'Invalid refresh token' });
-    }
-
-    // Generate new tokens
-    const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: '15m'
-    });
-
-    const newRefreshToken = jwt.sign({ userId: user.id }, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: '7d'
-    });
-
-    // Update refresh token
-    await user.update({ refreshToken: newRefreshToken });
-
-    res.json({
-      accessToken,
-      refreshToken: newRefreshToken
-    });
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid refresh token' });
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Failed to logout' }); // Generic error message
   }
 });
 

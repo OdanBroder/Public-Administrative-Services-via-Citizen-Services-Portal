@@ -18,7 +18,7 @@ help:
 # Build services
 build:
 	@echo "Building services..."
-	docker compose build
+	docker compose build --no-cache
 
 # Start services
 up:

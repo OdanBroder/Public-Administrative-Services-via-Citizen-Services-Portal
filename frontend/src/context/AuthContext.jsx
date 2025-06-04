@@ -48,11 +48,16 @@ export const AuthProvider = ({ children }) => {
         email,
         password
       });
-      const { accessToken, refreshToken, user } = response.data;
+      const { accessToken, refreshToken, user } = response?.data;
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
       setUser(user);
-      return { success: true };
+      // debugger;
+      console.log(JSON.stringify(user));
+      if(user.completedProfile === false){
+        return {success : true, finish_info: false};
+      }
+      return { success: true, finish_info: true };
     } catch (error) {
       return {
         success: false,
