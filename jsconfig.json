@@ -9,5 +9,5 @@
     "moduleResolution": "node"
   },
   "include": ["./"],
-  "exclude": ["backend"]
+  // "exclude": ["backend"]
 }

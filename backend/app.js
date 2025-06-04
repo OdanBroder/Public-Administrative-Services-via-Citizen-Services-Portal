@@ -8,6 +8,10 @@ import { initializeDatabase } from './config/database.js';
 import citizenRoutes from './routes/citizen.js'
 import authRoutes from './routes/auth.js';
 import dotenv from "dotenv";
+import User from './models/User.js';
+import { createAdminUser } from './models/User.js';
+import consoleRoute from './routes/console.js';
+import Role from './models/Role.js';
 dotenv.config();
 
 const app = express();
@@ -25,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/citizen', citizenRoutes);
 app.use('/api/medical-coverage', medicalCoverageRoutes);
 app.use('/api/service-health', serviceHealthRoutes);
+app.use('/api/admin', consoleRoute);
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
@@ -44,7 +49,8 @@ const startServer = async () => {
     try {
         // Initialize database
         await initializeDatabase();
-
+        await createAdminUser();
+        console.log(Role.associations);
         // Start server
         const port = config.port;
         app.listen(port, () => {

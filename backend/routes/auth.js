@@ -1,8 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import auth from '../middleware/auth.js';
+import {authenticate} from '../middleware/auth.js';
 import { validateEmail, validatePassword } from '../utils/validators.js';
+import {Role} from '../models/Association.js';
 import { google } from 'googleapis';
 import nodemailer from 'nodemailer';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService.js';
@@ -135,9 +136,9 @@ router.post('/login', async (req, res) => {
 
 
 // Refresh Token
-router.post('/logout', auth, async (req, res) => {
+router.post('/logout', authenticate, async (req, res) => {
   try {
-    const token = req.token; // Token is attached by the auth middleware
+    const token = req.token; // Token is attached by the authenticate middleware
     const user = await User.findByPk(req.user.userId);
 
     // 1. Clear the refresh token (existing logic)
@@ -177,7 +178,7 @@ router.post('/logout', auth, async (req, res) => {
 });
 
 // Get profile
-router.get('/profile', auth, async (req, res) => {
+router.get('/profile', authenticate, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.userId);
     if (!user) {
@@ -192,7 +193,7 @@ router.get('/profile', auth, async (req, res) => {
 });
 
 // Update profile
-router.patch('/profile', auth, async (req, res) => {
+router.patch('/profile', authenticate, async (req, res) => {
   const updates = Object.keys(req.body);
   const allowedUpdates = ['firstName', 'lastName', 'email', 'password'];
   const isValidOperation = updates.every(update => allowedUpdates.includes(update));
@@ -227,7 +228,7 @@ router.patch('/profile', auth, async (req, res) => {
 });
 
 // Change password
-router.post('/change-password', auth, async (req, res) => {
+router.post('/change-password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -333,6 +334,25 @@ router.post('/reset-password', async (req, res) => {
     res.json({ message: 'Password has been reset successfully' });
   } catch (error) {
     res.status(401).json({ error: 'Invalid or expired reset token' });
+  }
+});
+
+router.get("/role", authenticate, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.userId, {
+      attributes: ['id', 'firstName', 'lastName'], // Select specific user attributes
+      include: [{
+          model: Role,
+          as: 'role', // Use the alias defined in the User model association
+          attributes: ['name'] // Select only the role name
+      }],
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ role: user.role ? user.role.name : 'N/A' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch user role' });
   }
 });
 

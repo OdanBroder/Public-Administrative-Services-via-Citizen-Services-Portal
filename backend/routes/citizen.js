@@ -1,4 +1,4 @@
-import auth from '../middleware/auth.js';
+import {authenticate} from '../middleware/auth.js';
 import Citizen from '../models/Citizen.js';
 import {upload} from '../config/multerConfig.js';
 import express from 'express';
@@ -6,7 +6,7 @@ const router = express.Router();
 import User from '../models/User.js';
 
 
-router.post("/", auth, (req, res) => {
+router.post("/", authenticate, (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
       console.error("Multer error:", err);
@@ -67,7 +67,7 @@ router.post("/", auth, (req, res) => {
         where:{
           id: id
         }
-      })
+      });
       res.status(201).json({
         msg: "Citizen record created successfully",
         citizen: newCitizen,

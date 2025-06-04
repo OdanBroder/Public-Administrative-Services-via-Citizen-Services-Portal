@@ -32,11 +32,13 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (token) {
       fetchUserProfile(token);
+      fetchRole(token);
     } else {
       setLoading(false);
     }
@@ -53,6 +55,18 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
+
+  const fetchRole = async (token) => {
+    try {
+      const response = await api.get('/auth/role', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const {role} = response.data;
+      setRole(role);
+    } catch (error) {
+      console.error('Failed to fetch role:', error);
+    }
+  }
 
   const login = async (email, password) => {
     try {
@@ -113,10 +127,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        role,
         loading,
         login,
         register,
@@ -129,6 +146,7 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

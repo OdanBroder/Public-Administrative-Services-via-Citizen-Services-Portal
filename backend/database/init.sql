@@ -8,13 +8,12 @@ USE citizen_services;
 CREATE TABLE IF NOT EXISTS users (
     id INT NOT NULL AUTO_INCREMENT,
     email VARCHAR(255) NOT NULL,
-    username VARCHAR(255) NOT NULL,
+    username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     is_email_verified TINYINT(1) NOT NULL DEFAULT 0,
     is_qr_enabled TINYINT(1) NOT NULL DEFAULT 0,
-    role ENUM('user', 'admin') DEFAULT 'user',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP NULL,
@@ -178,4 +177,107 @@ CREATE TABLE IF NOT EXISTS jwt_blacklist (
 CREATE EVENT cleanup_jwt_blacklist
 ON SCHEDULE EVERY 1 DAY
 DO
-  DELETE FROM jwt_blacklist WHERE expires_at < NOW()
+  DELETE FROM jwt_blacklist WHERE expires_at < NOW();
+
+
+  -- 1. Offices/Departments Table
+-- Stores information about the different organizational units.
+CREATE TABLE IF NOT EXISTS Offices (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE COMMENT 'Name of the office/department, e.g., City Public Security',
+    description TEXT NULL COMMENT 'Optional description of the office',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 2. Roles Table
+-- Stores the defined roles in the system.
+CREATE TABLE IF NOT EXISTS Roles (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE COMMENT 'Role name, e.g., Admin, Citizen, Staff, Head',
+    description TEXT NULL COMMENT 'Optional description of the role',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 3. Permissions Table
+-- Stores the defined permissions (actions) in the system.
+CREATE TABLE IF NOT EXISTS Permissions (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE COMMENT 'Permission name (action), e.g., manage_users, process_request',
+    description TEXT NULL COMMENT 'Optional description of the permission',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 4. RolePermissions Table (Many-to-Many Join Table)
+-- Maps which permissions are granted to which roles.
+CREATE TABLE IF NOT EXISTS RolePermissions (
+    role_id INT UNSIGNED NOT NULL,
+    permission_id INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (role_id, permission_id),
+    FOREIGN KEY (role_id) REFERENCES Roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES Permissions(id) ON DELETE CASCADE
+);
+-- Modify users table to include role and office references
+-- Have to do this after creating the Roles and Offices tables
+ALTER TABLE users
+ADD COLUMN role_id INT UNSIGNED DEFAULT 2 COMMENT 'Foreign key linking to the Roles table',
+ADD COLUMN office_id INT UNSIGNED NULL COMMENT 'Foreign key linking to the Offices table (relevant for Staff/Head roles)',
+ADD CONSTRAINT fk_user_role FOREIGN KEY (role_id) REFERENCES Roles(id) ON DELETE SET NULL, -- Or restrict deletion if a user must have a role
+ADD CONSTRAINT fk_user_office FOREIGN KEY (office_id) REFERENCES Offices(id) ON DELETE SET NULL; -- Or restrict deletion
+
+ALTER TABLE users
+ADD INDEX idx_user_role (role_id),
+ADD INDEX idx_user_office (office_id);
+
+INSERT INTO Offices (name) VALUES (
+    'CA'),
+    ('UBND');
+
+-- Insert Roles
+INSERT INTO Roles (name) VALUES 
+    ("Admin"), 
+    ("Citizen"), 
+    ("Staff"), 
+    ("Head");
+
+-- Insert Permissions
+INSERT INTO Permissions (name) VALUES 
+    ("manage_users"), 
+    ("assign_roles"), 
+    ("submit_request"), 
+    ("view_own_request"), 
+    ("process_request"), -- Staff permission
+    ("approve_request"); -- Head permission
+
+-- Assign Permissions to Roles (Example)
+-- Admin
+INSERT INTO RolePermissions (role_id, permission_id) VALUES
+    ((SELECT id FROM Roles WHERE name = 'Admin'), (SELECT id FROM Permissions WHERE name = 'manage_users')),
+    ((SELECT id FROM Roles WHERE name = 'Admin'), (SELECT id FROM Permissions WHERE name = 'assign_roles'));
+
+-- Citizen
+INSERT INTO RolePermissions (role_id, permission_id) VALUES
+    ((SELECT id FROM Roles WHERE name = 'Citizen'), (SELECT id FROM Permissions WHERE name = 'submit_request')),
+    ((SELECT id FROM Roles WHERE name = 'Citizen'), (SELECT id FROM Permissions WHERE name = 'view_own_request'));
+
+-- Staff
+INSERT INTO RolePermissions (role_id, permission_id) VALUES
+    ((SELECT id FROM Roles WHERE name = 'Staff'), (SELECT id FROM Permissions WHERE name = 'process_request')),
+    ((SELECT id FROM Roles WHERE name = 'Staff'), (SELECT id FROM Permissions WHERE name = 'view_own_request')); -- Staff can also view their own requests
+    (SELECT id FROM Roles WHERE name = 'Staff'), (SELECT id FROM Permissions WHERE name = 'submit_request')); -- Staff can submit requests on behalf of citizens
+
+-- Head
+INSERT INTO RolePermissions (role_id, permission_id) VALUES
+    ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'approve_request')),
+    ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'process_request')); -- Head might also be able to process
+    ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'view_own_request')); -- Head can view their own requests
+    ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'submit_request')); -- Head can submit requests on behalf of citizens
+
+INSERT INTO users VALUES()
+UPDATE Users SET role_id = (SELECT id FROM Roles WHERE name = 'Admin') WHERE username = 'admin_user';
+UPDATE Users SET role_id = (SELECT id FROM Roles WHERE name = 'Staff'), office_id = (SELECT id FROM Offices WHERE name = 'City Public Security') WHERE username = 'staff_ps_user';
+UPDATE Users SET role_id = (SELECT id FROM Roles WHERE name = 'Head'), office_id = (SELECT id FROM Offices WHERE name = 'City People Committee') WHERE username = 'head_pc_user';
+

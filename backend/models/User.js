@@ -1,10 +1,48 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Model } from 'sequelize'; // Import Model
 import bcrypt from 'bcryptjs';
 import sequelize from '../config/database.js';
+import Role from './Role.js'; // Import Role model
+import Office from './Office.js'; // Import Office model
 
-const User = sequelize.define('User', {
+// Extend Model for User class
+class User extends Model {
+  // Instance method to compare password
+  async comparePassword(candidatePassword) {
+    return bcrypt.compare(candidatePassword, this.password);
+  }
+
+  // Static method to find user by email
+  static async findByEmail(email) {
+    return this.findOne({ where: { email: email.toLowerCase() } });
+  }
+
+  // Static method to find user by username
+  static async findByUsername(username) {
+    return this.findOne({ where: { username: username } });
+  }
+
+  // Static method to check if profile is complete by username
+  static async hasFinishedProfile(username) {
+    const user = await this.findOne({
+      where: { username },
+      attributes: ['completeProfile'],
+    });
+    return user?.completeProfile === true;
+  }
+
+  // Static method to check if profile is complete by primary key
+  static async hasFinishedProfilePk(pKey) {
+    const user = await this.findOne({
+      where: { id: pKey },
+      attributes: ['completeProfile'],
+    });
+    return user?.completeProfile === true;
+  }
+}
+
+User.init({
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.INTEGER.UNSIGNED, // Changed to UNSIGNED for consistency
     primaryKey: true,
     autoIncrement: true
   },
@@ -39,20 +77,49 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  role: {
-    type: DataTypes.ENUM('user', 'admin'),
-    defaultValue: 'user'
+  // REMOVED: Old role ENUM field
+  // role: {
+  //   type: DataTypes.ENUM('user', 'admin'),
+  //   defaultValue: 'user'
+  // },
+  role_id: { // ADDED: Foreign key for Role
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false, // Allow null initially or for users without roles?
+    defaultValue: 2,
+    references: {
+      model: Role,
+      key: 'id'
+    },
+    comment: 'Foreign key linking to the Roles table'
+  },
+  office_id: { // ADDED: Foreign key for Office
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true, // Nullable as not all roles belong to an office (e.g., Admin, Citizen)
+    references: {
+      model: Office,
+      key: 'id'
+    },
+    comment: 'Foreign key linking to the Offices table (relevant for Staff/Head roles)'
   },
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   },
-  completeProfile:{
+  updatedAt: { // ADDED: Standard updatedAt field
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+    onUpdate: DataTypes.NOW
+  },
+  completeProfile: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     field: "complete_profile"
   }
 }, {
+  sequelize,
+  modelName: 'User',
+  tableName: 'users', 
+  timestamps: true, 
   hooks: {
     beforeSave: async (user) => {
       if (user.changed('password')) {
@@ -60,39 +127,31 @@ const User = sequelize.define('User', {
         user.password = await bcrypt.hash(user.password, salt);
       }
     }
-  }
+  },
+  indexes: [ // ADDED: Indexes for foreign keys
+    { fields: ['role_id'] },
+    { fields: ['office_id'] }
+  ]
 });
 
-// Instance method to compare password
-User.prototype.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
+async function createAdminUser(){
+  try {
+    const adminUser = await User.create({
+      username: 'admin',
+      email: "admin@example.com",
+      firstName: 'Admin',
+      lastName: 'User',
+      password: 'admin_user', // admin_user
+      role_id: 1, // Assuming role_id 1 is for Admin
+      completeProfile: true // Set to true if admin profile is considered complete
+    });
 
-// Static method to find user by email
-User.findByEmail = async function(email) {
-  return this.findOne({ where: { email: email.toLowerCase() } });
-};
+  }
+  catch (error) {
+    console.error('Error creating admin user:', error);
+  }
+}
 
-User.findByUsername = async function (username){
-  return this.findOne({ where: {username: username}});
-} 
+export default User;
+export {createAdminUser};
 
-User.hasFinishedProfile = async function (username) {
-  const completed = await this.findOne({
-    where: { username },
-    attributes: ['completeProfile'],
-  });
-
-  return completed?.completeProfile === true;
-};
-
-User.hasFinishedProfilePk = async function (pKey) {
-  const completed = await this.findOne({
-    where: { id: pKey },
-    attributes: ['completeProfile'],
-  });
-
-  return completed?.completeProfile === true;
-};
-
-export default User; 

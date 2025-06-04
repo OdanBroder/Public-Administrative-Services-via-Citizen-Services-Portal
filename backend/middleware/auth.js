@@ -1,9 +1,8 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
 import config from '../config/config.js';
 import BlacklistedToken from '../models/BlacklistedToken.js';
-
-const auth = async (req, res, next) => {
+import { User, Role, Office, Permission } from '../models/Association.js'; // Adjust the import path as necessary
+const authenticate= async (req, res, next) => {
   try {
     const authHeader = req.header('Authorization');
     
@@ -40,5 +39,80 @@ const auth = async (req, res, next) => {
   }
 };
 
-export { auth as authenticateToken };
-export default auth; 
+const authorize = (requiredPermission, options = {}) => {
+  const { checkOfficeScope = false, getTargetOfficeId } = options;
+
+  if (checkOfficeScope && typeof getTargetOfficeId !== "function") {
+    throw new Error("getTargetOfficeId function is required when checkOfficeScope is true.");
+  }
+
+  return async (req, res, next) => {
+    try {
+      // 1. Get User ID from previous authentication middleware (e.g., JWT)
+      const userId = req.user?.userId; // Adjust based on how your auth middleware attaches user info
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required." });
+      }
+      console.log("Role accsociations:", Role.associations);
+      // 2. Fetch User with Role, Permissions, and Office
+      const user = await User.findByPk(userId, {
+        include: [
+          {
+            model: Role,
+            as: "role",
+            include: [
+              {
+                model: Permission,
+                as: "permissions", // This alias depends on how you defined it in RolePermission.js
+                through: { attributes: [] }, // Don't include join table attributes
+              },
+            ],
+          },
+          {
+            model: Office,
+            as: "office", // Include the user's assigned office
+          },
+        ],
+      });
+
+      if (!user || !user.role) {
+        return res.status(403).json({ error: "Forbidden: User role not found." });
+      }
+
+      // 3. Check Permissions
+      const userPermissions = user.role.permissions.map((p) => p.name);
+      const hasPermission = Array.isArray(requiredPermission)
+        ? requiredPermission.every((p) => userPermissions.includes(p))
+        : userPermissions.includes(requiredPermission);
+
+      if (!hasPermission) {
+        return res.status(403).json({ error: "Forbidden: Insufficient permissions." });
+      }
+
+      // 4. Check Office Scope (if required)
+      if (checkOfficeScope && (user.role.name === "Staff" || user.role.name === "Head")) {
+        const targetOfficeId = getTargetOfficeId(req);
+        
+        if (targetOfficeId == null) {
+            console.warn("Could not determine target office ID for scope check.");
+            return res.status(400).json({ error: "Bad Request: Target office information missing." });
+        }
+
+        if (!user.office_id || user.office_id !== targetOfficeId) {
+          return res.status(403).json({
+            error: `Forbidden: You can only ${requiredPermission} requests for your assigned office.`,
+          });
+        }
+      }
+      res.role = user.role.name; // Attach role to response for further use if needed
+      // 5. Access Granted
+      next();
+    } catch (error) {
+      console.error("RBAC Authorization Error:", error);
+      res.status(500).json({ error: "Internal Server Error during authorization." });
+    }
+  };
+};
+
+export {authorize,authenticate};
+ 
