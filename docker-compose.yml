@@ -9,6 +9,7 @@ services:
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
+      --init-connect='SET NAMES utf8mb4'
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -19,10 +20,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   backend:
     build:
@@ -99,6 +101,10 @@ networks:
 
 volumes:
   mysql_data:
+    name: citizen_services_mysql_data
   backend_node_modules:
+    name: citizen_services_backend_node_modules
   frontend_node_modules:
+    name: citizen_services_frontend_node_modules
   frontend_dist:
+    name: citizen_services_frontend_dist

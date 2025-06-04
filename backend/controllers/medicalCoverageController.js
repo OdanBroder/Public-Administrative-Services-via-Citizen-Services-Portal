@@ -1,34 +1,89 @@
-import MedicalCoverage from '../models/MedicalCoverage.js';
-import Citizen from '../models/Citizen.js';
+import { User, MedicalCoverage } from '../models/associations.js';
+import { Role } from '../models/Association.js';
 
 export const getMedicalCoverage = async (req, res) => {
   try {
-    const { citizenId } = req.params;
+    const { userId } = req.params;
+    const requestingUser = await User.findOne({
+      where: { id: req.user.userId },
+      include: [{ model: Role, as: 'role' }]
+    });
+    
+    // Check if user exists
+    const targetUser = await User.findOne({ where: { id: userId } });
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Only allow users to view their own coverage unless they have admin/staff role
+    if (requestingUser.role.name !== 'Admin' && 
+        requestingUser.role.name !== 'Staff' && 
+        requestingUser.id !== parseInt(userId)) {
+      return res.status(403).json({ message: 'Not authorized to view this coverage' });
+    }
+
     const coverage = await MedicalCoverage.findAll({
-      where: { citizenId },
+      where: { citizenId: userId },
+      attributes: [
+        'id',
+        'citizenId',
+        'type',
+        'startDate',
+        'endDate',
+        'monthlyPremium',
+        'status'
+      ],
       include: [{
-        model: Citizen,
+        model: User,
+        as: 'user',
         attributes: ['id', 'firstName', 'lastName', 'email']
       }]
     });
+    
+    if (!coverage || coverage.length === 0) {
+      return res.status(404).json({ message: 'No medical coverage found for this user' });
+    }
+    
     res.json(coverage);
   } catch (error) {
+    console.error('Error in getMedicalCoverage:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
 export const createMedicalCoverage = async (req, res) => {
   try {
-    const { citizenId, coverageType, startDate, endDate, monthlyPremium } = req.body;
+    const { citizenId, type, startDate, endDate, monthlyPremium } = req.body;
+    const requestingUser = await User.findOne({
+      where: { id: req.user.userId },
+      include: [{ model: Role, as: 'role' }]
+    });
+
+    // Check if target user exists
+    const targetUser = await User.findOne({ where: { id: citizenId } });
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Target user not found' });
+    }
+
+    // Only allow admin/staff to create coverage for others
+    if (requestingUser.role.name !== 'Admin' && 
+        requestingUser.role.name !== 'Staff' && 
+        requestingUser.id !== parseInt(citizenId)) {
+      return res.status(403).json({ message: 'Not authorized to create coverage for this user' });
+    }
+
     const coverage = await MedicalCoverage.create({
       citizenId,
-      coverageType,
+      type,
       startDate,
       endDate,
-      monthlyPremium
+      monthlyPremium,
+      status: 'ACTIVE'
     });
+
     res.status(201).json(coverage);
   } catch (error) {
+    console.error('Error in createMedicalCoverage:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -36,19 +91,34 @@ export const createMedicalCoverage = async (req, res) => {
 export const updateMedicalCoverage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { coverageType, startDate, endDate, monthlyPremium } = req.body;
-    const coverage = await MedicalCoverage.findByPk(id);
+    const { type, startDate, endDate, monthlyPremium, status } = req.body;
+    const requestingUser = await User.findOne({
+      where: { id: req.user.userId },
+      include: [{ model: Role, as: 'role' }]
+    });
+    
+    const coverage = await MedicalCoverage.findOne({ where: { id } });
     if (!coverage) {
       return res.status(404).json({ message: 'Coverage not found' });
     }
+
+    // Only allow admin/staff to update coverage
+    if (requestingUser.role.name !== 'Admin' && 
+        requestingUser.role.name !== 'Staff') {
+      return res.status(403).json({ message: 'Not authorized to update coverage' });
+    }
+
     await coverage.update({
-      coverageType,
+      type,
       startDate,
       endDate,
-      monthlyPremium
+      monthlyPremium,
+      status
     });
+
     res.json(coverage);
   } catch (error) {
+    console.error('Error in updateMedicalCoverage:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -56,13 +126,25 @@ export const updateMedicalCoverage = async (req, res) => {
 export const deleteMedicalCoverage = async (req, res) => {
   try {
     const { id } = req.params;
-    const coverage = await MedicalCoverage.findByPk(id);
+    const requestingUser = await User.findOne({
+      where: { id: req.user.userId },
+      include: [{ model: Role, as: 'role' }]
+    });
+
+    const coverage = await MedicalCoverage.findOne({ where: { id } });
     if (!coverage) {
       return res.status(404).json({ message: 'Coverage not found' });
     }
+
+    // Only allow admin to delete coverage
+    if (requestingUser.role.name !== 'Admin') {
+      return res.status(403).json({ message: 'Not authorized to delete coverage' });
+    }
+
     await coverage.destroy();
     res.json({ message: 'Coverage deleted successfully' });
   } catch (error) {
+    console.error('Error in deleteMedicalCoverage:', error);
     res.status(500).json({ message: error.message });
   }
-}; 
+};

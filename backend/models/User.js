@@ -136,6 +136,18 @@ User.init({
 
 async function createAdminUser(){
   try {
+    // Check if admin user already exists
+    const existingAdmin = await User.findOne({
+      where: {
+        username: 'admin'
+      }
+    });
+
+    if (existingAdmin) {
+      console.log('Admin user already exists');
+      return;
+    }
+
     const adminUser = await User.create({
       username: 'admin',
       email: "admin@example.com",
@@ -146,6 +158,7 @@ async function createAdminUser(){
       completeProfile: true // Set to true if admin profile is considered complete
     });
 
+    console.log('Admin user created successfully');
   }
   catch (error) {
     console.error('Error creating admin user:', error);

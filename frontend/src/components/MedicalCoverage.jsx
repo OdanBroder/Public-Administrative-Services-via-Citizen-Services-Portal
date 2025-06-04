@@ -21,8 +21,10 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress
+  CircularProgress,
+  IconButton
 } from '@mui/material';
+import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const MedicalCoverage = () => {
@@ -34,6 +36,8 @@ const MedicalCoverage = () => {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editingService, setEditingService] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
   const [formData, setFormData] = useState({
     citizenId: '',
     coverageType: '',
@@ -48,10 +52,17 @@ const MedicalCoverage = () => {
 
   useEffect(() => {
     if (authLoading) return;
-    
+
     if (!user) {
       navigate('/login');
       return;
+    }
+
+    // Set initial tab based on user role
+    if (user.role === 'admin') {
+      setActiveTab(1); // Service Health tab
+    } else {
+      setActiveTab(0); // Medical Coverage tab
     }
 
     fetchData();
@@ -87,28 +98,42 @@ const MedicalCoverage = () => {
     setActiveTab(newValue);
   };
 
-  const handleOpen = () => {
+  const handleOpen = (service = null) => {
     if (!user?.id) {
       setError('Authentication required');
       return;
     }
-    setFormData({
-      citizenId: user.id,
-      coverageType: '',
-      startDate: '',
-      endDate: '',
-      monthlyPremium: '',
-      serviceName: '',
-      status: '',
-      responseTime: '',
-      uptime: ''
-    });
+
+    if (service) {
+      setEditingService(service);
+      setFormData({
+        ...formData,
+        serviceName: service.serviceName,
+        status: service.status,
+        responseTime: service.responseTime,
+        uptime: service.uptime
+      });
+    } else {
+      setEditingService(null);
+      setFormData({
+        citizenId: user.id,
+        coverageType: '',
+        startDate: '',
+        endDate: '',
+        monthlyPremium: '',
+        serviceName: '',
+        status: '',
+        responseTime: '',
+        uptime: ''
+      });
+    }
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
     setError('');
+    setEditingService(null);
   };
 
   const handleSubmit = async (e) => {
@@ -128,18 +153,68 @@ const MedicalCoverage = () => {
           monthlyPremium: formData.monthlyPremium
         });
       } else {
-        await api.post('/service-health', {
-          serviceName: formData.serviceName,
-          status: formData.status,
-          responseTime: formData.responseTime,
-          uptime: formData.uptime
-        });
+        if (editingService) {
+          await api.put(`/service-health/${editingService.id}`, {
+            status: formData.status,
+            responseTime: formData.responseTime,
+            uptime: formData.uptime
+          });
+        } else {
+          await api.post('/service-health', {
+            serviceName: formData.serviceName,
+            status: formData.status,
+            responseTime: formData.responseTime,
+            uptime: formData.uptime
+          });
+        }
       }
       handleClose();
       fetchData();
     } catch (err) {
       console.error('Error submitting form:', err);
       setError(err.response?.data?.message || 'Failed to submit form');
+    }
+  };
+
+  const handleDelete = async (serviceId) => {
+    if (!api) {
+      setError('Authentication required');
+      return;
+    }
+
+    try {
+      await api.delete(`/service-health/${serviceId}`);
+      fetchData();
+    } catch (err) {
+      console.error('Error deleting service:', err);
+      setError(err.response?.data?.message || 'Failed to delete service');
+    }
+  };
+
+  const handleRegisterService = async (serviceId) => {
+    if (!api) {
+      setError('Authentication required');
+      return;
+    }
+
+    try {
+      const response = await api.post('/applications', {
+        user_id: user.id,
+        service_id: serviceId,
+        service_type: 'MEDICAL_SERVICE'
+      });
+
+      setSuccessMessage(`Successfully registered for ${response.data.application.Service.name}. Your application is pending approval.`);
+      setError('');
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+    } catch (err) {
+      console.error('Error registering for service:', err);
+      setError(err.response?.data?.message || 'Failed to register for service');
+      setSuccessMessage('');
     }
   };
 
@@ -179,15 +254,17 @@ const MedicalCoverage = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Medical Coverage & Service Health
+        {user.role === 'admin' ? 'Service Health Management' : 'Medical Coverage & Services'}
       </Typography>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tab label="Medical Coverage" />
-          <Tab label="Service Health" />
-        </Tabs>
-      </Box>
+      {user.role !== 'admin' && (
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs value={activeTab} onChange={handleTabChange}>
+            <Tab label="Medical Coverage" />
+            <Tab label="Available Services" />
+          </Tabs>
+        </Box>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -195,68 +272,192 @@ const MedicalCoverage = () => {
         </Alert>
       )}
 
-      <Box sx={{ mb: 2 }}>
-        <Button variant="contained" color="primary" onClick={handleOpen}>
-          Add New {activeTab === 0 ? 'Coverage' : 'Service'}
-        </Button>
-      </Box>
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
+      )}
 
-      {activeTab === 0 ? (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Coverage Type</TableCell>
-                <TableCell>Start Date</TableCell>
-                <TableCell>End Date</TableCell>
-                <TableCell>Monthly Premium</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {coverages.map((coverage) => (
-                <TableRow key={coverage.id}>
-                  <TableCell>{coverage.coverageType}</TableCell>
-                  <TableCell>{new Date(coverage.startDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{new Date(coverage.endDate).toLocaleDateString()}</TableCell>
-                  <TableCell>${coverage.monthlyPremium}</TableCell>
+      {user.role === 'admin' ? (
+        <>
+          <Box sx={{ mb: 2 }}>
+            <Button variant="contained" color="primary" onClick={() => handleOpen()}>
+              Add New Service
+            </Button>
+          </Box>
+
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Service Name</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Response Time</TableCell>
+                  <TableCell>Uptime</TableCell>
+                  <TableCell>Last Checked</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {services.map((service) => (
+                  <TableRow key={service.id}>
+                    <TableCell>{service.serviceName}</TableCell>
+                    <TableCell>{service.status}</TableCell>
+                    <TableCell>{service.responseTime}ms</TableCell>
+                    <TableCell>{service.uptime}%</TableCell>
+                    <TableCell>{new Date(service.lastChecked).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <IconButton onClick={() => handleOpen(service)} color="primary">
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton onClick={() => handleDelete(service.id)} color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Service Name</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Response Time</TableCell>
-                <TableCell>Uptime</TableCell>
-                <TableCell>Last Checked</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {services.map((service) => (
-                <TableRow key={service.id}>
-                  <TableCell>{service.serviceName}</TableCell>
-                  <TableCell>{service.status}</TableCell>
-                  <TableCell>{service.responseTime}ms</TableCell>
-                  <TableCell>{service.uptime}%</TableCell>
-                  <TableCell>{new Date(service.lastChecked).toLocaleString()}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <>
+          {activeTab === 0 ? (
+            <>
+              <Box sx={{ mb: 2 }}>
+                <Button variant="contained" color="primary" onClick={() => handleOpen()}>
+                  Add New Coverage
+                </Button>
+              </Box>
+
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Coverage Type</TableCell>
+                      <TableCell>Start Date</TableCell>
+                      <TableCell>End Date</TableCell>
+                      <TableCell>Monthly Premium</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {coverages.map((coverage) => (
+                      <TableRow key={coverage.id}>
+                        <TableCell>{coverage.coverageType}</TableCell>
+                        <TableCell>{new Date(coverage.startDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(coverage.endDate).toLocaleDateString()}</TableCell>
+                        <TableCell>${coverage.monthlyPremium}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Service Name</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {services.map((service) => (
+                    <TableRow key={service.id}>
+                      <TableCell>{service.serviceName}</TableCell>
+                      <TableCell>
+                        <Box
+                          sx={{
+                            display: 'inline-block',
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            bgcolor: service.status === 'UP' ? 'success.light' :
+                              service.status === 'DEGRADED' ? 'warning.light' : 'error.light',
+                            color: 'white'
+                          }}
+                        >
+                          {service.status}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleRegisterService(service.id)}
+                          disabled={service.status !== 'UP'}
+                        >
+                          Register
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </>
       )}
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>
-          Add New {activeTab === 0 ? 'Medical Coverage' : 'Service Health'}
+          {user.role === 'admin'
+            ? (editingService ? 'Edit Service Health' : 'Add New Service Health')
+            : 'Add New Medical Coverage'}
         </DialogTitle>
         <DialogContent>
-          {activeTab === 0 ? (
+          {user.role === 'admin' ? (
+            <>
+              {!editingService && (
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  name="serviceName"
+                  label="Service Name"
+                  value={formData.serviceName}
+                  onChange={handleChange}
+                  required
+                />
+              )}
+              <TextField
+                select
+                fullWidth
+                margin="normal"
+                name="status"
+                label="Status"
+                value={formData.status}
+                onChange={handleChange}
+                required
+              >
+                <MenuItem value="UP">Operational</MenuItem>
+                <MenuItem value="DEGRADED">Degraded</MenuItem>
+                <MenuItem value="DOWN">Down</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth
+                margin="normal"
+                name="responseTime"
+                label="Response Time (ms)"
+                type="number"
+                value={formData.responseTime}
+                onChange={handleChange}
+                required
+              />
+              <TextField
+                fullWidth
+                margin="normal"
+                name="uptime"
+                label="Uptime (%)"
+                type="number"
+                value={formData.uptime}
+                onChange={handleChange}
+                required
+              />
+            </>
+          ) : (
             <>
               <TextField
                 select
@@ -268,9 +469,9 @@ const MedicalCoverage = () => {
                 onChange={handleChange}
                 required
               >
-                <MenuItem value="Basic">Basic</MenuItem>
-                <MenuItem value="Premium">Premium</MenuItem>
-                <MenuItem value="Family">Family</MenuItem>
+                <MenuItem value="BASIC">Basic</MenuItem>
+                <MenuItem value="STANDARD">Standard</MenuItem>
+                <MenuItem value="PREMIUM">Premium</MenuItem>
               </TextField>
               <TextField
                 fullWidth
@@ -305,58 +506,12 @@ const MedicalCoverage = () => {
                 required
               />
             </>
-          ) : (
-            <>
-              <TextField
-                fullWidth
-                margin="normal"
-                name="serviceName"
-                label="Service Name"
-                value={formData.serviceName}
-                onChange={handleChange}
-                required
-              />
-              <TextField
-                select
-                fullWidth
-                margin="normal"
-                name="status"
-                label="Status"
-                value={formData.status}
-                onChange={handleChange}
-                required
-              >
-                <MenuItem value="Operational">Operational</MenuItem>
-                <MenuItem value="Degraded">Degraded</MenuItem>
-                <MenuItem value="Down">Down</MenuItem>
-              </TextField>
-              <TextField
-                fullWidth
-                margin="normal"
-                name="responseTime"
-                label="Response Time (ms)"
-                type="number"
-                value={formData.responseTime}
-                onChange={handleChange}
-                required
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                name="uptime"
-                label="Uptime (%)"
-                type="number"
-                value={formData.uptime}
-                onChange={handleChange}
-                required
-              />
-            </>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained" color="primary">
-            Submit
+            {editingService ? 'Update' : 'Submit'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -3,6 +3,17 @@ import ServiceHealth from '../models/ServiceHealth.js';
 export const getServiceHealth = async (req, res) => {
   try {
     const services = await ServiceHealth.findAll();
+    
+    // If user is not admin, only return service names and status
+    if (!req.user || req.user.role !== 'admin') {
+      const simplifiedServices = services.map(service => ({
+        id: service.id,
+        serviceName: service.serviceName,
+        status: service.status
+      }));
+      return res.json(simplifiedServices);
+    }
+    
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -11,6 +22,10 @@ export const getServiceHealth = async (req, res) => {
 
 export const createServiceHealth = async (req, res) => {
   try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: Admin privileges required' });
+    }
+
     const { serviceName, status, responseTime, lastChecked, uptime } = req.body;
     const service = await ServiceHealth.create({
       serviceName,
@@ -27,6 +42,10 @@ export const createServiceHealth = async (req, res) => {
 
 export const updateServiceHealth = async (req, res) => {
   try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: Admin privileges required' });
+    }
+
     const { id } = req.params;
     const { status, responseTime, lastChecked, uptime } = req.body;
     const service = await ServiceHealth.findByPk(id);
@@ -47,6 +66,10 @@ export const updateServiceHealth = async (req, res) => {
 
 export const deleteServiceHealth = async (req, res) => {
   try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied: Admin privileges required' });
+    }
+
     const { id } = req.params;
     const service = await ServiceHealth.findByPk(id);
     if (!service) {
@@ -57,4 +80,4 @@ export const deleteServiceHealth = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-}; 
+};

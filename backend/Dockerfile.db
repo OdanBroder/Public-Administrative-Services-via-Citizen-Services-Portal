@@ -1,20 +1,12 @@
 FROM mysql:8.0.40
 
-# Set environment variables with default values
-# ENV MYSQL_ROOT_PASSWORD=root_password \
-#     MYSQL_DATABASE=citizen_portal \
-#     MYSQL_USER=citizen_user \
-#     MYSQL_PASSWORD=citizen_password
-
 # Copy initialization scripts
 COPY database/init.sql /docker-entrypoint-initdb.d/01-init.sql
+COPY database/seed.sql /docker-entrypoint-initdb.d/02-seed.sql
+COPY database/entrypoint.sh /docker-entrypoint-initdb.d/entrypoint.sh
 
-# Create a script to set up users and permissions
-RUN echo "CREATE USER IF NOT EXISTS 'citizen_user'@'%' IDENTIFIED BY 'user_password';" > /docker-entrypoint-initdb.d/02-users.sql && \
-    echo "GRANT ALL PRIVILEGES ON citizen_portal.* TO 'citizen_user'@'%';" >> /docker-entrypoint-initdb.d/02-users.sql && \
-    echo "FLUSH PRIVILEGES;" >> /docker-entrypoint-initdb.d/02-users.sql
-
-# Set ownership of MySQL data directory to mysql user (UID 999)
+# Set permissions
+RUN chmod +x /docker-entrypoint-initdb.d/entrypoint.sh
 RUN chown -R mysql:mysql /var/lib/mysql
 
 EXPOSE 3306
