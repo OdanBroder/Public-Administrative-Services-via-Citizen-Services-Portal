@@ -114,6 +114,11 @@ User.init({
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     field: "complete_profile"
+  },
+  is_email_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: "is_email_verified"
   }
 }, {
   sequelize,
@@ -143,25 +148,43 @@ async function createAdminUser(){
       }
     });
 
-    if (existingAdmin) {
-      console.log('Admin user already exists');
-      return;
+    if (!existingAdmin) {
+      const adminUser = await User.create({
+        username: 'admin',
+        email: "admin@example.com",
+        firstName: 'Admin',
+        lastName: 'User',
+        password: 'Admin@@123456', // Using the password from seed.sql
+        role_id: 1, // Assuming role_id 1 is for Admin
+        completeProfile: true,
+        is_email_verified: true
+      });
+      console.log('Admin user created successfully');
     }
 
-    const adminUser = await User.create({
-      username: 'admin',
-      email: "admin@example.com",
-      firstName: 'Admin',
-      lastName: 'User',
-      password: 'admin_user', // admin_user
-      role_id: 1, // Assuming role_id 1 is for Admin
-      completeProfile: true // Set to true if admin profile is considered complete
+    // Check if regular user exists
+    const existingUser = await User.findOne({
+      where: {
+        username: 'user'
+      }
     });
 
-    console.log('Admin user created successfully');
+    if (!existingUser) {
+      const regularUser = await User.create({
+        username: 'user',
+        email: "user@example.com",
+        firstName: 'Regular',
+        lastName: 'User',
+        password: 'User@@123456', // Using the password from seed.sql
+        role_id: 2, // Assuming role_id 2 is for Citizen
+        completeProfile: true,
+        is_email_verified: true
+      });
+      console.log('Regular user created successfully');
+    }
   }
   catch (error) {
-    console.error('Error creating admin user:', error);
+    console.error('Error creating default users:', error);
   }
 }
 

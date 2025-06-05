@@ -28,7 +28,7 @@ import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const MedicalCoverage = () => {
-  const { user, api, loading: authLoading } = useAuth();
+  const { user, role, api, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [coverages, setCoverages] = useState([]);
@@ -57,16 +57,16 @@ const MedicalCoverage = () => {
       navigate('/login');
       return;
     }
-
-    // Set initial tab based on user role
-    if (user.role === 'admin') {
+    
+    // Set initial tab based on role
+    if (role === 'Admin') {
       setActiveTab(1); // Service Health tab
     } else {
       setActiveTab(0); // Medical Coverage tab
     }
 
     fetchData();
-  }, [user, api, authLoading]);
+  }, [user, role, api, authLoading]);
 
   const fetchData = async () => {
     if (!user?.id || !api) {
@@ -77,12 +77,20 @@ const MedicalCoverage = () => {
 
     try {
       setLoading(true);
-      const [coverageRes, serviceRes] = await Promise.all([
-        api.get(`/medical-coverage/${user.id}`),
-        api.get('/service-health')
-      ]);
-      setCoverages(coverageRes.data || []);
-      setServices(serviceRes.data || []);
+      if (role === 'Admin') {
+        // Admin only needs service health data
+        const serviceRes = await api.get('/service-health');
+        setServices(serviceRes.data || []);
+        setCoverages([]); // Clear any existing coverage data
+      } else {
+        // Regular users need both medical coverage and service health
+        const [coverageRes, serviceRes] = await Promise.all([
+          api.get(`/medical-coverage/${user.id}`),
+          api.get('/service-health')
+        ]);
+        setCoverages(coverageRes.data || []);
+        setServices(serviceRes.data || []);
+      }
       setError('');
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -254,10 +262,10 @@ const MedicalCoverage = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        {user.role === 'admin' ? 'Service Health Management' : 'Medical Coverage & Services'}
+        {role === 'Admin' ? 'Service Health Management' : 'Medical Coverage & Services'}
       </Typography>
 
-      {user.role !== 'admin' && (
+      {role !== 'Admin' && (
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={activeTab} onChange={handleTabChange}>
             <Tab label="Medical Coverage" />
@@ -278,7 +286,7 @@ const MedicalCoverage = () => {
         </Alert>
       )}
 
-      {user.role === 'admin' ? (
+      {role === 'Admin' ? (
         <>
           <Box sx={{ mb: 2 }}>
             <Button variant="contained" color="primary" onClick={() => handleOpen()}>
@@ -299,23 +307,45 @@ const MedicalCoverage = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {services.map((service) => (
-                  <TableRow key={service.id}>
-                    <TableCell>{service.serviceName}</TableCell>
-                    <TableCell>{service.status}</TableCell>
-                    <TableCell>{service.responseTime}ms</TableCell>
-                    <TableCell>{service.uptime}%</TableCell>
-                    <TableCell>{new Date(service.lastChecked).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <IconButton onClick={() => handleOpen(service)} color="primary">
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => handleDelete(service.id)} color="error">
-                        <DeleteIcon />
-                      </IconButton>
+                {services && services.length > 0 ? (
+                  services.map((service) => (
+                    <TableRow key={service.id}>
+                      <TableCell>{service.serviceName}</TableCell>
+                      <TableCell>
+                        <Box
+                          sx={{
+                            display: 'inline-block',
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            bgcolor: service.status === 'UP' ? 'success.light' :
+                              service.status === 'DEGRADED' ? 'warning.light' : 'error.light',
+                            color: 'white'
+                          }}
+                        >
+                          {service.status}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{service.responseTime}ms</TableCell>
+                      <TableCell>{service.uptime}%</TableCell>
+                      <TableCell>{new Date(service.lastChecked).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <IconButton onClick={() => handleOpen(service)} color="primary">
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton onClick={() => handleDelete(service.id)} color="error">
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      No services found
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </TableContainer>
@@ -404,12 +434,12 @@ const MedicalCoverage = () => {
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>
-          {user.role === 'admin'
+          {role === 'Admin'
             ? (editingService ? 'Edit Service Health' : 'Add New Service Health')
             : 'Add New Medical Coverage'}
         </DialogTitle>
         <DialogContent>
-          {user.role === 'admin' ? (
+          {role === 'Admin' ? (
             <>
               {!editingService && (
                 <TextField

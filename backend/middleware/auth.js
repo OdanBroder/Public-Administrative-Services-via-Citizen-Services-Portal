@@ -2,7 +2,8 @@ import jwt from 'jsonwebtoken';
 import config from '../config/config.js';
 import BlacklistedToken from '../models/BlacklistedToken.js';
 import { User, Role, Office, Permission } from '../models/Association.js'; // Adjust the import path as necessary
-const authenticate= async (req, res, next) => {
+
+const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.header('Authorization');
     
@@ -19,23 +20,41 @@ const authenticate= async (req, res, next) => {
 
     try {
       const decoded = jwt.verify(token, config.jwt.secret);
-      const user = await User.findByPk(decoded.userId);
+      const user = await User.findOne({
+        where: { id: decoded.userId },
+        include: [{
+          model: Role,
+          as: 'role',
+          include: [{
+            model: Permission,
+            as: 'permissions',
+            through: { attributes: [] }
+          }]
+        }]
+      });
       
       if (!user) {
-        throw new Error();
+        throw new Error('User not found');
       }
-      req.user = decoded;
+
+      // Attach user info to request
+      req.user = {
+        userId: user.id,
+        role: user.role.name,
+        permissions: user.role.permissions.map(p => p.name)
+      };
       req.token = token;
       next();
-    } catch (error ) {
-      if(error instanceof  jwt.TokenExpiredError)
+    } catch (error) {
+      if(error instanceof jwt.TokenExpiredError)
         return res.status(401).json({ error: 'Token is not valid (expired)' });
       if(error instanceof jwt.JsonWebTokenError)
         return res.status(401).json({ error: 'Token is not valid' });
+      return res.status(401).json({ error: 'Authentication failed' });
     }
   } catch (error) {
     console.error(error.message);
-    return res.status(500).json({ error:`Server Error: ${error.message}` });
+    return res.status(500).json({ error: `Server Error: ${error.message}` });
   }
 };
 

@@ -19,13 +19,15 @@ INSERT INTO Permissions (name, description) VALUES
 ('submit_request', 'Can submit service requests'),
 ('view_own_request', 'Can view their own requests'),
 ('process_request', 'Can process service requests'),
-('approve_request', 'Can approve service requests');
+('approve_request', 'Can approve service requests'),
+('manage_service_health', 'Can manage service health records');
 
 -- Assign permissions to roles
 -- Admin permissions
 INSERT INTO RolePermissions (role_id, permission_id) VALUES
 ((SELECT id FROM Roles WHERE name = 'Admin'), (SELECT id FROM Permissions WHERE name = 'manage_users')),
-((SELECT id FROM Roles WHERE name = 'Admin'), (SELECT id FROM Permissions WHERE name = 'assign_roles'));
+((SELECT id FROM Roles WHERE name = 'Admin'), (SELECT id FROM Permissions WHERE name = 'assign_roles')),
+((SELECT id FROM Roles WHERE name = 'Admin'), (SELECT id FROM Permissions WHERE name = 'manage_service_health'));
 
 -- Citizen permissions
 INSERT INTO RolePermissions (role_id, permission_id) VALUES
@@ -44,21 +46,6 @@ INSERT INTO RolePermissions (role_id, permission_id) VALUES
 ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'process_request')),
 ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'view_own_request')),
 ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'submit_request'));
-
--- Insert initial users
--- Admin user (Password: Admin@123)
-INSERT INTO users 
-(email, username, password, first_name, last_name, is_email_verified, complete_profile, role_id)
-VALUES 
-('admin@example.com', 'admin', '$2a$10$mFtGfmK9X9qMw.C/x.XXBu0ZDOnG7MCsI1Y5cHb5VEsnJh1JjjQ2i', 'Admin', 'User', 1, true, 
-(SELECT id FROM Roles WHERE name = 'Admin'));
-
--- Regular user (Password: User@123)
-INSERT INTO users 
-(email, username, password, first_name, last_name, is_email_verified, complete_profile, role_id)
-VALUES 
-('user@example.com', 'user', '$2a$10$GmQzh0MECSgEKLEKleiNveMCQgw3nJH4573tA0GarYxJV.w6lQk3q', 'Regular', 'User', 1, true,
-(SELECT id FROM Roles WHERE name = 'Citizen'));
 
 -- Insert initial services
 INSERT INTO services (name, description, status) VALUES

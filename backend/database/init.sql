@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS applications (
 CREATE TABLE IF NOT EXISTS medical_coverage (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    card_number VARCHAR(255) NOT NULL,
     coverage_type ENUM('BASIC', 'STANDARD', 'PREMIUM') NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,

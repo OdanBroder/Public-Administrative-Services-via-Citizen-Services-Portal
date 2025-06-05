@@ -10,7 +10,7 @@ const MedicalCoverage = sequelize.define("MedicalCoverage", {
   citizenId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'citizen_id',
+    field: 'user_id',
     references: {
       model: 'users',
       key: 'id'

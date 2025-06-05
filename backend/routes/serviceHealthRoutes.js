@@ -13,12 +13,12 @@ const router = express.Router();
 router.get('/', authenticate, getServiceHealth);
 
 // Create service health (admin only)
-router.post('/', authenticate, authorize('manage_users'), createServiceHealth);
+router.post('/', authenticate, authorize('manage_service_health'), createServiceHealth);
 
 // Update service health (admin only)
-router.put('/:id', authenticate, authorize('manage_users'), updateServiceHealth);
+router.put('/:id', authenticate, authorize('manage_service_health'), updateServiceHealth);
 
 // Delete service health (admin only)
-router.delete('/:id', authenticate, authorize('manage_users'), deleteServiceHealth);
+router.delete('/:id', authenticate, authorize('manage_service_health'), deleteServiceHealth);
 
 export default router; 
