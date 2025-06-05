@@ -25,10 +25,6 @@ const Application = sequelize.define('Application', {
       key: 'id'
     }
   },
-  service_type: {
-    type: DataTypes.STRING(50),
-    allowNull: false
-  },
   status: {
     type: DataTypes.ENUM('pending', 'approved', 'rejected'),
     defaultValue: 'pending'

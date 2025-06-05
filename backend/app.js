@@ -1,13 +1,16 @@
 // backend/app.js
 import express from 'express';
 import cors from 'cors';
-import medicalCoverageRoutes from './routes/medicalCoverageRoutes.js';
-import serviceHealthRoutes from './routes/serviceHealthRoutes.js';
+import dotenv from "dotenv";
+
 import config from './config/config.js';
 import { initializeDatabase } from './config/database.js';
+
+import medicalCoverageRoutes from './routes/medicalCoverageRoutes.js';
+import serviceHealthRoutes from './routes/serviceHealthRoutes.js';
+import applicationRoutes from './routes/applicationRoutes.js';
 import citizenRoutes from './routes/citizen.js'
 import authRoutes from './routes/auth.js';
-import dotenv from "dotenv";
 import User from './models/User.js';
 import { createAdminUser } from './models/User.js';
 import consoleRoute from './routes/console.js';
@@ -30,6 +33,7 @@ app.use('/api/citizen', citizenRoutes);
 app.use('/api/medical-coverage', medicalCoverageRoutes);
 app.use('/api/service-health', serviceHealthRoutes);
 app.use('/api/admin', consoleRoute);
+app.use('/api/applications', applicationRoutes)
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

@@ -48,7 +48,7 @@ export const createApplication = async (req, res) => {
     // Check if user already has a pending application for this service
     const existingApplication = await Application.findOne({
       where: {
-        user_id: req.user.id,
+        user_id: req.user.userId,
         service_id: service_id,
         status: 'pending'
       }
@@ -60,12 +60,9 @@ export const createApplication = async (req, res) => {
 
     // Create the application with the service name as type if not provided
     const application = await Application.create({
-      user_id: req.user.id,
+      user_id: req.user.userId,
       service_id,
-      service_type: service_type || service.name,
-      status: 'pending',
-      created_at: new Date(),
-      updated_at: new Date()
+      status: 'pending'
     });
 
     // Include the service details in the response
