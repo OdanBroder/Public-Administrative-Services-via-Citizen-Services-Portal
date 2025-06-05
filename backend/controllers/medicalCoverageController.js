@@ -9,16 +9,30 @@ export const getMedicalCoverage = async (req, res) => {
       include: [{ model: Role, as: 'role' }]
     });
     
-    // Check if user exists
-    const targetUser = await User.findOne({ where: { id: userId } });
-    if (!targetUser) {
-      return res.status(404).json({ message: 'User not found' });
+    // If admin/staff, get all coverage
+    if (requestingUser.role.name === 'Admin' || requestingUser.role.name === 'Staff') {
+      const allCoverage = await MedicalCoverage.findAll({
+        attributes: [
+          'id',
+          'citizenId',
+          'type',
+          'startDate',
+          'endDate',
+          'monthlyPremium',
+          'status'
+        ],
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        }]
+      });
+      
+      return res.json(allCoverage);
     }
 
-    // Only allow users to view their own coverage unless they have admin/staff role
-    if (requestingUser.role.name !== 'Admin' && 
-        requestingUser.role.name !== 'Staff' && 
-        requestingUser.id !== parseInt(userId)) {
+    // For regular users, only get their own coverage
+    if (requestingUser.id !== parseInt(userId)) {
       return res.status(403).json({ message: 'Not authorized to view this coverage' });
     }
 
@@ -53,7 +67,7 @@ export const getMedicalCoverage = async (req, res) => {
 
 export const createMedicalCoverage = async (req, res) => {
   try {
-    const { citizenId, type, startDate, endDate, monthlyPremium } = req.body;
+    const { citizenId, coverageType, startDate, endDate, monthlyPremium } = req.body;
     const requestingUser = await User.findOne({
       where: { id: req.user.userId },
       include: [{ model: Role, as: 'role' }]
@@ -74,7 +88,7 @@ export const createMedicalCoverage = async (req, res) => {
 
     const coverage = await MedicalCoverage.create({
       citizenId,
-      type,
+      type: coverageType,
       startDate,
       endDate,
       monthlyPremium,
@@ -91,7 +105,7 @@ export const createMedicalCoverage = async (req, res) => {
 export const updateMedicalCoverage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, startDate, endDate, monthlyPremium, status } = req.body;
+    const { coverageType, startDate, endDate, monthlyPremium, status } = req.body;
     const requestingUser = await User.findOne({
       where: { id: req.user.userId },
       include: [{ model: Role, as: 'role' }]
@@ -109,7 +123,7 @@ export const updateMedicalCoverage = async (req, res) => {
     }
 
     await coverage.update({
-      type,
+      type: coverageType,
       startDate,
       endDate,
       monthlyPremium,

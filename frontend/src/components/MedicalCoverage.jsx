@@ -22,7 +22,7 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  IconButton
+  IconButton,
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -49,6 +49,7 @@ const MedicalCoverage = () => {
     responseTime: '',
     uptime: ''
   });
+  const isAdmin = role === "Admin";
 
   useEffect(() => {
     if (authLoading) return;
@@ -57,14 +58,10 @@ const MedicalCoverage = () => {
       navigate('/login');
       return;
     }
-    
-    // Set initial tab based on role
-    if (role === 'Admin') {
-      setActiveTab(1); // Service Health tab
-    } else {
-      setActiveTab(0); // Medical Coverage tab
-    }
 
+    // Default tab settings - both user and admin start with tab 0
+    setActiveTab(0);
+    
     fetchData();
   }, [user, role, api, authLoading]);
 
@@ -77,25 +74,25 @@ const MedicalCoverage = () => {
 
     try {
       setLoading(true);
-      if (role === 'Admin') {
-        // Admin only needs service health data
-        const serviceRes = await api.get('/service-health');
-        setServices(serviceRes.data || []);
-        setCoverages([]); // Clear any existing coverage data
-      } else {
-        // Regular users need both medical coverage and service health
-        const [coverageRes, serviceRes] = await Promise.all([
-          api.get(`/medical-coverage/${user.id}`),
-          api.get('/service-health')
-        ]);
+      setError(null);
+
+      // Both user types need service health data
+      const serviceRes = await api.get('/service-health');
+      setServices(serviceRes.data || []);
+      
+      // Fetch medical coverage
+      try {
+        // For admin/staff, fetch all coverage
+        // For regular users, fetch only their coverage
+        const coverageRes = await api.get(`/medical-coverage/${isAdmin ? 'all' : user.id}`);
         setCoverages(coverageRes.data || []);
-        setServices(serviceRes.data || []);
+      } catch (err) {
+        console.error('Error fetching coverage data:', err);
+        setCoverages([]);
       }
-      setError('');
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.response?.data?.message || 'Failed to fetch data');
-      setCoverages([]);
       setServices([]);
     } finally {
       setLoading(false);
@@ -104,6 +101,8 @@ const MedicalCoverage = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+    // Reload data when switching tabs to ensure fresh data
+    fetchData();
   };
 
   const handleOpen = (service = null) => {
@@ -118,13 +117,13 @@ const MedicalCoverage = () => {
         ...formData,
         serviceName: service.serviceName,
         status: service.status,
-        responseTime: service.responseTime,
-        uptime: service.uptime
+        responseTime: service.responseTime || 0,
+        uptime: service.uptime || 0
       });
     } else {
       setEditingService(null);
       setFormData({
-        citizenId: user.id,
+        citizenId: isAdmin ? '' : user.id,
         coverageType: '',
         startDate: '',
         endDate: '',
@@ -212,9 +211,9 @@ const MedicalCoverage = () => {
         service_type: 'MEDICAL_SERVICE'
       });
 
-      setSuccessMessage(`Successfully registered for ${response.data.application.Service.name}. Your application is pending approval.`);
+      setSuccessMessage(`Successfully registered for service. Your application is pending approval.`);
       setError('');
-      
+
       // Clear success message after 5 seconds
       setTimeout(() => {
         setSuccessMessage('');
@@ -261,18 +260,36 @@ const MedicalCoverage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        {role === 'Admin' ? 'Service Health Management' : 'Medical Coverage & Services'}
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{
+          color: 'text.primary',
+          fontWeight: 600,
+          padding: '8px 12px',
+          backgroundColor: (theme) =>
+            theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+          '&:hover': {
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+          },
+        }}
+      >
+        {role === 'Admin' ? 'Service Portal Administration' : 'Medical Coverage & Services'}
       </Typography>
 
-      {role !== 'Admin' && (
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs value={activeTab} onChange={handleTabChange}>
-            <Tab label="Medical Coverage" />
-            <Tab label="Available Services" />
-          </Tabs>
-        </Box>
-      )}
+      {/* Tab navigation for both admin and regular users */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={handleTabChange}>
+          {/* Both users and admins can see Medical Coverage tab */}
+          <Tab label="Medical Coverage" />
+          
+          {/* Both users and admins can see Available Services tab */}
+          <Tab label={isAdmin ? "Service Health Management" : "Available Services"} />
+        </Tabs>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -286,11 +303,12 @@ const MedicalCoverage = () => {
         </Alert>
       )}
 
-      {role === 'Admin' ? (
+      {activeTab === 0 ? (
+        // Medical Coverage Tab - for both user and admin
         <>
           <Box sx={{ mb: 2 }}>
             <Button variant="contained" color="primary" onClick={() => handleOpen()}>
-              Add New Service
+              Add New Coverage
             </Button>
           </Box>
 
@@ -298,19 +316,36 @@ const MedicalCoverage = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Service Name</TableCell>
+                  {isAdmin && (
+                    <>
+                      <TableCell>User ID</TableCell>
+                      <TableCell>User Name</TableCell>
+                      <TableCell>User Email</TableCell>
+                    </>
+                  )}
+                  <TableCell>Coverage Type</TableCell>
+                  <TableCell>Start Date</TableCell>
+                  <TableCell>End Date</TableCell>
+                  <TableCell>Monthly Premium</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Response Time</TableCell>
-                  <TableCell>Uptime</TableCell>
-                  <TableCell>Last Checked</TableCell>
-                  <TableCell>Actions</TableCell>
+                  {isAdmin && <TableCell>Actions</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {services && services.length > 0 ? (
-                  services.map((service) => (
-                    <TableRow key={service.id}>
-                      <TableCell>{service.serviceName}</TableCell>
+                {coverages && coverages.length > 0 ? (
+                  coverages.map((coverage) => (
+                    <TableRow key={coverage.id}>
+                      {isAdmin && (
+                        <>
+                          <TableCell>{coverage.user?.id}</TableCell>
+                          <TableCell>{`${coverage.user?.firstName} ${coverage.user?.lastName}`}</TableCell>
+                          <TableCell>{coverage.user?.email}</TableCell>
+                        </>
+                      )}
+                      <TableCell>{coverage.type}</TableCell>
+                      <TableCell>{new Date(coverage.startDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(coverage.endDate).toLocaleDateString()}</TableCell>
+                      <TableCell>${coverage.monthlyPremium}</TableCell>
                       <TableCell>
                         <Box
                           sx={{
@@ -318,31 +353,29 @@ const MedicalCoverage = () => {
                             px: 1,
                             py: 0.5,
                             borderRadius: 1,
-                            bgcolor: service.status === 'UP' ? 'success.light' :
-                              service.status === 'DEGRADED' ? 'warning.light' : 'error.light',
+                            bgcolor: coverage.status === 'ACTIVE' ? 'success.light' : 'error.light',
                             color: 'white'
                           }}
                         >
-                          {service.status}
+                          {coverage.status}
                         </Box>
                       </TableCell>
-                      <TableCell>{service.responseTime}ms</TableCell>
-                      <TableCell>{service.uptime}%</TableCell>
-                      <TableCell>{new Date(service.lastChecked).toLocaleString()}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleOpen(service)} color="primary">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleDelete(service.id)} color="error">
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <IconButton onClick={() => handleOpen(coverage)} color="primary">
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton onClick={() => handleDelete(coverage.id)} color="error">
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      No services found
+                    <TableCell colSpan={isAdmin ? 9 : 5} align="center">
+                      No coverage found
                     </TableCell>
                   </TableRow>
                 )}
@@ -351,39 +384,75 @@ const MedicalCoverage = () => {
           </TableContainer>
         </>
       ) : (
-        <>
-          {activeTab === 0 ? (
-            <>
-              <Box sx={{ mb: 2 }}>
-                <Button variant="contained" color="primary" onClick={() => handleOpen()}>
-                  Add New Coverage
-                </Button>
-              </Box>
+        // Service Health Tab - Different for admin vs user
+        isAdmin ? (
+          <>
+            {/* Admin view for service health */}
+            <Box sx={{ mb: 2 }}>
+              <Button variant="contained" color="primary" onClick={() => handleOpen()}>
+                Add New Service
+              </Button>
+            </Box>
 
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Coverage Type</TableCell>
-                      <TableCell>Start Date</TableCell>
-                      <TableCell>End Date</TableCell>
-                      <TableCell>Monthly Premium</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {coverages.map((coverage) => (
-                      <TableRow key={coverage.id}>
-                        <TableCell>{coverage.coverageType}</TableCell>
-                        <TableCell>{new Date(coverage.startDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{new Date(coverage.endDate).toLocaleDateString()}</TableCell>
-                        <TableCell>${coverage.monthlyPremium}</TableCell>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Service Name</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Response Time</TableCell>
+                    <TableCell>Uptime</TableCell>
+                    <TableCell>Last Checked</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {services && services.length > 0 ? (
+                    services.map((service) => (
+                      <TableRow key={service.id}>
+                        <TableCell>{service.serviceName}</TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              display: 'inline-block',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 1,
+                              bgcolor: service.status === 'UP' ? 'success.light' :
+                                service.status === 'DEGRADED' ? 'warning.light' : 'error.light',
+                              color: 'white'
+                            }}
+                          >
+                            {service.status}
+                          </Box>
+                        </TableCell>
+                        <TableCell>{service.responseTime || 'N/A'}ms</TableCell>
+                        <TableCell>{service.uptime || 'N/A'}%</TableCell>
+                        <TableCell>{service.lastChecked ? new Date(service.lastChecked).toLocaleString() : 'N/A'}</TableCell>
+                        <TableCell>
+                          <IconButton onClick={() => handleOpen(service)} color="primary">
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton onClick={() => handleDelete(service.id)} color="error">
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
-          ) : (
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        No services found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        ) : (
+          <>
+            {/* User view for available services */}
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
@@ -394,52 +463,115 @@ const MedicalCoverage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {services.map((service) => (
-                    <TableRow key={service.id}>
-                      <TableCell>{service.serviceName}</TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            display: 'inline-block',
-                            px: 1,
-                            py: 0.5,
-                            borderRadius: 1,
-                            bgcolor: service.status === 'UP' ? 'success.light' :
-                              service.status === 'DEGRADED' ? 'warning.light' : 'error.light',
-                            color: 'white'
-                          }}
-                        >
-                          {service.status}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          size="small"
-                          onClick={() => handleRegisterService(service.id)}
-                          disabled={service.status !== 'UP'}
-                        >
-                          Register
-                        </Button>
+                  {services && services.length > 0 ? (
+                    services.map((service) => (
+                      <TableRow key={service.id}>
+                        <TableCell>{service.serviceName}</TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              display: 'inline-block',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 1,
+                              bgcolor: service.status === 'UP' ? 'success.light' :
+                                service.status === 'DEGRADED' ? 'warning.light' : 'error.light',
+                              color: 'white'
+                            }}
+                          >
+                            {service.status}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            size="small"
+                            onClick={() => handleRegisterService(service.id)}
+                            disabled={service.status !== 'UP'}
+                          >
+                            Register
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        No services available
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
-          )}
-        </>
+          </>
+        )
       )}
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>
-          {role === 'Admin'
-            ? (editingService ? 'Edit Service Health' : 'Add New Service Health')
-            : 'Add New Medical Coverage'}
+          {activeTab === 0 ? 'Add New Medical Coverage' : 
+            (editingService ? 'Edit Service Health' : 'Add New Service Health')}
         </DialogTitle>
         <DialogContent>
-          {role === 'Admin' ? (
+          {activeTab === 0 ? (
+            // Medical Coverage Form
+            <Box component="form" sx={{ mt: 2 }}>
+              {isAdmin && (
+                <TextField
+                  fullWidth
+                  label="User ID"
+                  name="citizenId"
+                  value={formData.citizenId}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                />
+              )}
+              <TextField
+                fullWidth
+                label="Coverage Type"
+                name="coverageType"
+                value={formData.coverageType}
+                onChange={handleChange}
+                margin="normal"
+                required
+              />
+              <TextField
+                fullWidth
+                label="Start Date"
+                name="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={handleChange}
+                margin="normal"
+                required
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                fullWidth
+                label="End Date"
+                name="endDate"
+                type="date"
+                value={formData.endDate}
+                onChange={handleChange}
+                margin="normal"
+                required
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                fullWidth
+                label="Monthly Premium"
+                name="monthlyPremium"
+                type="number"
+                value={formData.monthlyPremium}
+                onChange={handleChange}
+                margin="normal"
+                required
+              />
+            </Box>
+          ) : (
             <>
               {!editingService && (
                 <TextField
@@ -487,61 +619,12 @@ const MedicalCoverage = () => {
                 required
               />
             </>
-          ) : (
-            <>
-              <TextField
-                select
-                fullWidth
-                margin="normal"
-                name="coverageType"
-                label="Coverage Type"
-                value={formData.coverageType}
-                onChange={handleChange}
-                required
-              >
-                <MenuItem value="BASIC">Basic</MenuItem>
-                <MenuItem value="STANDARD">Standard</MenuItem>
-                <MenuItem value="PREMIUM">Premium</MenuItem>
-              </TextField>
-              <TextField
-                fullWidth
-                margin="normal"
-                name="startDate"
-                label="Start Date"
-                type="date"
-                value={formData.startDate}
-                onChange={handleChange}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                name="endDate"
-                label="End Date"
-                type="date"
-                value={formData.endDate}
-                onChange={handleChange}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-              <TextField
-                fullWidth
-                margin="normal"
-                name="monthlyPremium"
-                label="Monthly Premium"
-                type="number"
-                value={formData.monthlyPremium}
-                onChange={handleChange}
-                required
-              />
-            </>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained" color="primary">
-            {editingService ? 'Update' : 'Submit'}
+            {editingService ? 'Update' : 'Add'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -549,4 +632,4 @@ const MedicalCoverage = () => {
   );
 };
 
-export default MedicalCoverage; 
+export default MedicalCoverage;
