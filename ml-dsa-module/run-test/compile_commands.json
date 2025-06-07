@@ -1,0 +1,7 @@
+[
+  {
+    "directory": "/home/aneii11/your-project-directory", 
+    "command": "/usr/bin/clang++ -O3 -g2 -pthread -std=c++20 -I/home/aneii11/oqs-provider/openssl-build-gcc/include -L/home/aneii11/oqs-provider/openssl-build-gcc/lib -lcrypto -lssl -Wall -Wno-unused-variable /home/aneii11/your-project-directory/main.cpp -o /home/aneii11/your-project-directory/main",
+    "file": "/home/aneii11/your-project-directory/main.cpp"
+  }
+]
