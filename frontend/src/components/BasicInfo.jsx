@@ -166,6 +166,7 @@ const CitizenForm = () => {
           <h1 className="text-2xl font-bold text-center text-blue-800 mb-6">
             Cổng Thông Tin Dịch Vụ Công Dân
           </h1>
+          <p className="text-md"> Vui lòng điền thông tin trước khi tiếp tục</p>
 
           {submitStatus.message && (
             <div
@@ -199,7 +200,25 @@ const CitizenForm = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
+              
+              {/* Ngày sinh */}
+              <div>
+                <label
+                  htmlFor="ngaySinh"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Ngày sinh <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  id="ngaySinh"
+                  name="ngaySinh"
+                  value={formData.ngaySinh}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               {/* Số CCCD */}
               <div>
                 <label
@@ -258,24 +277,6 @@ const CitizenForm = () => {
                 />
               </div>
 
-              {/* Ngày sinh */}
-              <div>
-                <label
-                  htmlFor="ngaySinh"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Ngày sinh <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  id="ngaySinh"
-                  name="ngaySinh"
-                  value={formData.ngaySinh}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
 
               {/* Giới tính */}
               <div>

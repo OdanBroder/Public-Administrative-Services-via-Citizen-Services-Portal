@@ -1,9 +1,9 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
-
+import Office from './Office.js'; // Assuming you have an Office model
 const Service = sequelize.define('Service', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.INTEGER.UNSIGNED,
     primaryKey: true,
     autoIncrement: true
   },
@@ -19,6 +19,20 @@ const Service = sequelize.define('Service', {
   status: {
     type: DataTypes.ENUM('active', 'inactive'),
     defaultValue: 'active'
+  },
+  office_id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: Office, // Assuming you have an Office model
+      key: 'id'
+    }
+  },
+  application_url:{
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: null,
+    comment: 'URL for the service application or more information'
   },
   created_at: {
     type: DataTypes.DATE,

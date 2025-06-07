@@ -1,12 +1,16 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
-
+import User from './User.js';
 const Citizen = sequelize.define("Citizen", {
   id: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
     field:'id',
-    primaryKey: true
+    primaryKey: true,
+    references:{
+      model: User, // Assuming you have a User model
+      key: 'id'
+    }
   },
   hoVaTen: {
     type: DataTypes.STRING,

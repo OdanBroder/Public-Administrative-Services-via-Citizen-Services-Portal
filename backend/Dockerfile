@@ -6,7 +6,7 @@ WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 RUN mkdir -p /app/uploads
 RUN chown appuser:appgroup /app/uploads
-RUN chmod 755 /app/uploads
+RUN chmod 777 /app/uploads
 
 # Copy package files
 COPY package*.json ./

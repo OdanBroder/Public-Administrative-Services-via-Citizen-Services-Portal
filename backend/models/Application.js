@@ -10,7 +10,7 @@ const Application = sequelize.define('Application', {
     autoIncrement: true
   },
   user_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
     references: {
       model: 'users',
@@ -18,7 +18,7 @@ const Application = sequelize.define('Application', {
     }
   },
   service_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
     references: {
       model: 'services',

@@ -31,12 +31,23 @@ const Navbar = ({ user }) => { // Pass user and handlers as props
           {/* Center */}
           <div className="hidden md:flex md:items-center md:space-x-4">
             {user && (
+              <>
+              <Link to="/public-services"
+              className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors">
+              Thủ tục trực tuyến 
+              </Link>
               <Link
                 to="/medical-coverage"
                 className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
               >
                 Medical Coverage  
               </Link>
+              <Link to="/application-query"
+                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+              >
+                Tra cứu tình trạng thủ tục 
+              </Link>
+              </>
             )}
           </div>
 

@@ -58,10 +58,11 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const authorize = (requiredPermission, options = {}) => {
-  const { checkOfficeScope = false, getTargetOfficeId } = options;
 
-  if (checkOfficeScope && typeof getTargetOfficeId !== "function") {
+const authorize = (requiredPermission, options = {}) => {
+  const { checkOfficeScope = false, targetOfficeName } = options;
+
+  if (checkOfficeScope && typeof targetOfficeName !== "string") {
     throw new Error("getTargetOfficeId function is required when checkOfficeScope is true.");
   }
 
@@ -110,8 +111,7 @@ const authorize = (requiredPermission, options = {}) => {
 
       // 4. Check Office Scope (if required)
       if (checkOfficeScope && (user.role.name === "Staff" || user.role.name === "Head")) {
-        const targetOfficeId = getTargetOfficeId(req);
-        
+        const targetOfficeId = await Office.getOfficeId(targetOfficeName);
         if (targetOfficeId == null) {
             console.warn("Could not determine target office ID for scope check.");
             return res.status(400).json({ error: "Bad Request: Target office information missing." });

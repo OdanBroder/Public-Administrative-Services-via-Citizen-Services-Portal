@@ -20,7 +20,9 @@ const createSequelizeInstance = () => {
             logging: config.nodeEnv === 'development' ? console.log : false,
             define: {
                 timestamps: true,
-                underscored: true
+                underscored: true,
+                charset: 'utf8mb4',
+                collate: 'utf8mb4_unicode_ci',
             },
             retry: {
                 max: 5,

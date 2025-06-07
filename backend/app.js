@@ -15,6 +15,8 @@ import User from './models/User.js';
 import { createAdminUser } from './models/User.js';
 import consoleRoute from './routes/console.js';
 import Role from './models/Role.js';
+import birthRegistrationRoutes from './routes/birthApplicationRoutes.js';
+import servicesRoutes from './routes/serviceRoute.js';
 dotenv.config();
 
 const app = express();
@@ -33,7 +35,9 @@ app.use('/api/citizen', citizenRoutes);
 app.use('/api/medical-coverage', medicalCoverageRoutes);
 app.use('/api/service-health', serviceHealthRoutes);
 app.use('/api/admin', consoleRoute);
-app.use('/api/applications', applicationRoutes)
+app.use('/api/applications', applicationRoutes);
+app.use('/api/birth-registration', birthRegistrationRoutes);
+app.use('/api/services',  servicesRoutes)
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

@@ -8,7 +8,8 @@ import CitizenForm from './components/BasicInfo';
 import MedicalCoverage from './components/MedicalCoverage';
 import Navbar from './components/NavBar';
 import Banner from './components/Banner';
-
+import BirthRegistrationForm from './components/BirthRegistrationForm';
+import ServiceList from './components/ServiceList';
 import AdminConsole from './components/UserManagement';
 import { Unauthorized } from './components/UnauthorizedPage';
 
@@ -89,6 +90,17 @@ const AppContent = () => {
               <AdminConsole />
             </AuthorizedRoute>
           }></Route>
+          <Route path="/ubnd/dang-ky-khai-sinh" element={
+            <ProtectedRoute>
+              <BirthRegistrationForm />
+            </ProtectedRoute>
+          }></Route>
+          <Route path="/public-services" element={
+            <ProtectedRoute>
+              <ServiceList/>
+            </ProtectedRoute>
+
+          }/>
           <Route path="/unauthorized" element={<Unauthorized />} />
         </Routes>
       </div>

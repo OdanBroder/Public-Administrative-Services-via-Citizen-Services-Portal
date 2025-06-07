@@ -2,8 +2,8 @@ USE citizen_services;
 
 -- Insert initial offices
 INSERT INTO Offices (name, description) VALUES 
-('CA', 'City Administration'),
-('UBND', 'People''s Committee');
+('UBND', 'Ủy ban nhân dân thành phố'),
+('SYT', "Sở Y tế");
 
 -- Insert initial roles
 INSERT INTO Roles (name, description) VALUES 
@@ -21,7 +21,6 @@ INSERT INTO Permissions (name, description) VALUES
 ('process_request', 'Can process service requests'),
 ('approve_request', 'Can approve service requests'),
 ('manage_service_health', 'Can manage service health records');
-
 -- Assign permissions to roles
 -- Admin permissions
 INSERT INTO RolePermissions (role_id, permission_id) VALUES
@@ -48,12 +47,13 @@ INSERT INTO RolePermissions (role_id, permission_id) VALUES
 ((SELECT id FROM Roles WHERE name = 'Head'), (SELECT id FROM Permissions WHERE name = 'submit_request'));
 
 -- Insert initial services
-INSERT INTO services (name, description, status) VALUES
-('Medical Checkup', 'Regular health checkup service', 'active'),
-('Dental Care', 'Dental health services', 'active'),
-('Emergency Care', '24/7 emergency medical services', 'active'),
-('Specialist Consultation', 'Consultation with medical specialists', 'active'),
-('Laboratory Services', 'Medical testing and laboratory services', 'active');
+INSERT INTO services (name, description, status, office_id, application_url) VALUES
+('Medical Checkup', 'Regular health checkup service', 'active', 2, NULL),
+('Dental Care', 'Dental health services', 'active', 2, NULL),
+('Emergency Care', '24/7 emergency medical services', 'active', 2, NULL),
+('Specialist Consultation', 'Consultation with medical specialists', 'active', 2, NULL),
+('Laboratory Services', 'Medical testing and laboratory services', 'active', 2, NULL),
+('Birth certificate registration', '[People committee] Apply for birth certificate registration online service', 'active', 1, '/ubnd/dang-ky-khai-sinh');
 
 -- Insert initial service health records
 INSERT INTO service_health (service_name, status, response_time, uptime, last_checked) VALUES

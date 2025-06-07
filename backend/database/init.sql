@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS RolePermissions (
 
 -- 5. Users Table
 CREATE TABLE IF NOT EXISTS users (
-    id INT NOT NULL AUTO_INCREMENT,
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     role_id INT UNSIGNED DEFAULT 2 COMMENT 'Foreign key linking to the Roles table',
     office_id INT UNSIGNED NULL COMMENT 'Foreign key linking to the Offices table (relevant for Staff/Head roles)',
     email VARCHAR(255) NOT NULL,
@@ -76,19 +76,22 @@ CREATE INDEX idx_user_office ON users (office_id);
 
 -- 6. Services Table
 CREATE TABLE IF NOT EXISTS services (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status ENUM('active', 'inactive') DEFAULT 'active',
+    office_id INT UNSIGNED NULL COMMENT 'Foreign key linking to the Offices table',
+    application_url VARCHAR(255) NULL DEFAULT NULL COMMENT 'URL for the service application form',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_service_office FOREIGN KEY (office_id) REFERENCES Offices(id) ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- 7. Applications Table
 CREATE TABLE IF NOT EXISTS applications (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    service_id INT NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    service_id INT UNSIGNED NOT NULL,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -99,7 +102,7 @@ CREATE TABLE IF NOT EXISTS applications (
 -- 8. Medical Coverage Table
 CREATE TABLE IF NOT EXISTS medical_coverage (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
     card_number VARCHAR(255) NOT NULL,
     coverage_type ENUM('BASIC', 'STANDARD', 'PREMIUM') NOT NULL,
     start_date DATE NOT NULL,
@@ -131,7 +134,7 @@ CREATE TABLE IF NOT EXISTS service_health (
 -- 10. User QR Table
 CREATE TABLE IF NOT EXISTS user_qr (
     id INT NOT NULL AUTO_INCREMENT,
-    user_id INT NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
     secret_key VARCHAR(255) NOT NULL,
     backup_codes TEXT,
     recovery_email VARCHAR(255),
@@ -146,7 +149,7 @@ CREATE TABLE IF NOT EXISTS user_qr (
 -- 11. Login Sessions Table
 CREATE TABLE IF NOT EXISTS login_sessions (
     id INT NOT NULL AUTO_INCREMENT,
-    user_id INT NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
     session_token VARCHAR(255) NOT NULL,
     ip_address VARCHAR(45),
     user_agent TEXT,
@@ -163,7 +166,7 @@ CREATE TABLE IF NOT EXISTS login_sessions (
 -- 12. Password Reset Tokens Table
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id INT NOT NULL AUTO_INCREMENT,
-    user_id INT NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
     token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     used_at TIMESTAMP NULL,
@@ -178,7 +181,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 -- 13. Email Verification Tokens Table
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
     id INT NOT NULL AUTO_INCREMENT,
-    user_id INT NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
     token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     verified_at TIMESTAMP NULL,

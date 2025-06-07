@@ -8,7 +8,7 @@ const MedicalCoverage = sequelize.define("MedicalCoverage", {
     autoIncrement: true
   },
   citizenId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
     field: 'user_id',
     references: {

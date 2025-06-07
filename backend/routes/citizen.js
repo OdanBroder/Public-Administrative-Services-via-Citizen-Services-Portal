@@ -48,7 +48,7 @@ router.post("/", authenticate, (req, res) => {
     const id = req.user.userId;
     try {
       const newCitizen = await Citizen.create({
-        id: req.user.userId, // UUID generated in multer config
+        id: req.user.userId, 
         hoVaTen,
         soCCCD,
         hinhAnhCCCDTruoc: req.files.hinhAnhCCCDTruoc[0].path,
@@ -81,5 +81,46 @@ router.post("/", authenticate, (req, res) => {
     }
   });
 });
+
+router.get("/:id", authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    console.log("User ID from token:", userId);
+    console.log("Requested citizen ID:", id);
+    if(parseInt(userId )!== parseInt(id)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "You are not authorized to access this citizen's data" 
+      });
+    }
+    // Find citizen by ID
+    const citizen = await Citizen.findByPk(id);
+    
+    // Check if citizen exists
+    if (!citizen) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Citizen not found" 
+      });
+    }
+    
+    // Return citizen data
+    return res.status(200).json({
+      success: true,
+      data: citizen
+    });
+  } catch (error) {
+    console.error("Error fetching citizen:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error", 
+      error: error.message 
+    });
+  }
+} )
+// Controller to get citizen by ID
+
+
 
 export default router;

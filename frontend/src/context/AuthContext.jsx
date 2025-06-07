@@ -49,8 +49,8 @@ export const AuthProvider = ({ children }) => {
       const response = await api.get('/auth/profile');
       setUser(response.data);
     } catch (error) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      console.error('Failed to fetch user profile:', error);
+      // Optionally handle token expiration or invalidation
     } finally {
       setLoading(false);
     }

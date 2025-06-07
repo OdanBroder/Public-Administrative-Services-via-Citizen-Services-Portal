@@ -1,7 +1,14 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database.js'; 
-class Office extends Model {}
-
+class Office extends Model {
+  static async getOfficeId(officeName) {
+    const office = await Office.findOne({
+      where: { name: officeName },
+      attributes: ['id'],
+    });
+    return office ? office.id : null;
+  }
+}
 Office.init({
   id: {
     type: DataTypes.INTEGER.UNSIGNED,
