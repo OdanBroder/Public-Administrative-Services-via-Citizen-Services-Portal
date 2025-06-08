@@ -12,7 +12,9 @@ import BirthRegistrationForm from './components/BirthRegistrationForm';
 import ServiceList from './components/ServiceList';
 import AdminConsole from './components/UserManagement';
 import { Unauthorized } from './components/UnauthorizedPage';
-
+import BirthRegistrationDetail from './components/BirthRegistrationDetail';
+import BirthRegistrationList from './components/BirthRegistrationList';
+import MyRegistration from './components/BirthRegistrationProf';
 // 4 Defined roles: Admin, Citizen, Staff, Head
 const AuthorizedRoute = ({ children, required_role }) => {
   const { user, loading, role } = useAuth();
@@ -25,6 +27,13 @@ const AuthorizedRoute = ({ children, required_role }) => {
     return <Navigate to="/login" />;
   }
 
+  if(Array.isArray(required_role)){
+    const hasPermission = required_role.some((r) => role === r)
+    if(!hasPermission) {
+      return <Navigate to="/unauthorized" />; // or any fallback
+    }
+    return children;
+  }
   // Check if required_role matches user's role
   if (required_role && role !== required_role) {
     return <Navigate to="/unauthorized" />; // or any fallback
@@ -50,12 +59,12 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const AppContent = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Banner />
-      <Navbar user={user} />
+      <Navbar user={user} role={role}/>
       <div className="container mx-auto px-4 py-8">
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -101,7 +110,22 @@ const AppContent = () => {
             </ProtectedRoute>
 
           }/>
+          <Route path="/view-applications" element={
+            <AuthorizedRoute required_role={["Head", "Staff"]}>
+              <BirthRegistrationList></BirthRegistrationList>
+            </AuthorizedRoute>
+          } ></Route>
+          <Route path="/birth-registration/:id" element={
+            <ProtectedRoute>
+              <BirthRegistrationDetail />
+            </ProtectedRoute>
+          }/>
           <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/my-application" element={
+            <ProtectedRoute>
+              <MyRegistration></MyRegistration>
+            </ProtectedRoute>
+          } />
         </Routes>
       </div>
     </div>

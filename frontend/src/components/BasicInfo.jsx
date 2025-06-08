@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 
 const CitizenForm = () => {
-  const {user} = useAuth();
+  const {user, role} = useAuth();
   const [formData, setFormData] = useState({
     hoVaTen: "",
     soCCCD: "",

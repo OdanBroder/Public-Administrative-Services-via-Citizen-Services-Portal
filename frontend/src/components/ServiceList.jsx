@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext'; // Assuming you have an AuthContext for API calls
+import { useAuth } from '../context/AuthContext'; 
 const ServiceList = () => {
   const [services, setServices] = useState([]);
   const [offices, setOffices] = useState([]);
   const [selectedOffice, setSelectedOffice] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const {api, user} = useAuth(); // Assuming useAuth provides api instance
+  const {api, user, role} = useAuth(); 
   // Fetch all offices for filter dropdown
   useEffect(() => {
     const fetchOffices = async () => {

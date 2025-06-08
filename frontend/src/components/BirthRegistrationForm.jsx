@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 const BirthRegistrationForm = () => {
-  const { user, api } = useAuth();
+  const { user, api, role } = useAuth();
   const [confirm, setConfirm] = useState(false);
   // State for form data with all four sections
   const [formData, setFormData] = useState({

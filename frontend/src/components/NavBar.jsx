@@ -1,18 +1,18 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
- 
 // Replace with your actual user state and auth logic
 // For demo: const { user, login, logout } = useAuth();
-const Navbar = ({ user }) => { // Pass user and handlers as props
+const Navbar = ({ user, role }) => {
+  // Pass user and handlers as props
   const navigate = useNavigate();
   const { logout } = useAuth();
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
-  }
+    navigate("/login");
+  };
 
   return (
     <nav className="bg-red-400 text-yellow-100 shadow-lg">
@@ -24,31 +24,53 @@ const Navbar = ({ user }) => { // Pass user and handlers as props
               to="/"
               className="text-2xl font-bold hover:text-theme-red transition-colors"
             >
-              OurSite {/* Or an <img src="/logo.svg" alt="Logo" className="h-8 w-auto" /> */}
+              OurSite{" "}
+              {/* Or an <img src="/logo.svg" alt="Logo" className="h-8 w-auto" /> */}
             </Link>
           </div>
 
           {/* Center */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            {user && (
+            {(user && role === "Admin") ? (
               <>
-              <Link to="/public-services"
-              className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors">
-              Thủ tục trực tuyến 
-              </Link>
-              <Link
-                to="/medical-coverage"
-                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-              >
-                Medical Coverage  
-              </Link>
-              <Link to="/application-query"
-                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-              >
-                Tra cứu tình trạng thủ tục 
-              </Link>
+                <Link
+                  to="/admin/console"
+                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+                >
+                  Quản lý người dùng 
+                </Link>
+              </>    
+            ) : role === "Head" || role === "Staff" ? (
+              <>
+                <Link
+                  to="/view-applications"
+                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+                >
+                  Quản lý thủ tục 
+                </Link>
               </>
-            )}
+             ) : (  
+              <>
+                <Link
+                  to="/public-services"
+                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+                >
+                  Thủ tục trực tuyến
+                </Link>
+                <Link
+                  to="/medical-coverage"
+                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+                >
+                  Medical Coverage
+                </Link>
+                <Link
+                  to="/my-application"
+                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+                >
+                  Tra cứu tình trạng thủ tục
+                </Link>
+              </>        
+             )}
           </div>
 
           {/* Right Side */}
@@ -96,12 +118,36 @@ const Navbar = ({ user }) => { // Pass user and handlers as props
             >
               <span className="sr-only">Open main menu</span>
               {/* Icon when menu is closed. Heroicon name: menu */}
-              <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" />
+              <svg
+                className="block h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 6h16M4 12h16m-7 6h7"
+                />
               </svg>
               {/* Icon when menu is open. Heroicon name: x */}
-              <svg className="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="hidden h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>

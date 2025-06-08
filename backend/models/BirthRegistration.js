@@ -172,9 +172,9 @@ BirthRegistration.init({
   
   // Status
   status: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM('chờ duyệt', "chờ ký", "thành công", "từ chối"),
     allowNull: false,
-    defaultValue: "pending",
+    defaultValue: "chờ duyệt", // Possible values: viewing (chờ duyệt), processing (chờ ký), completed (thành công), rejected(từ chối)
     field: "status"
   },
   service_id: {

@@ -60,14 +60,13 @@ router.post("/", authenticate, (req, res) => {
         queQuan,
         noiThuongTru,
       });
-      await User.update({
-        completedProfile: true
-      },
-      {
-        where:{
-          id: id
-        }
-      });
+      const user = await User.findByPk(id);
+      if (!user) {
+        return res.status(404).json({ msg: "User not found" });
+      }
+      user.completeProfile = true; // Mark user profile as complete
+      await user.save();
+
       res.status(201).json({
         msg: "Citizen record created successfully",
         citizen: newCitizen,

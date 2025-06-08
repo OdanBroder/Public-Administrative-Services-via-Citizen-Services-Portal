@@ -102,7 +102,7 @@ const authorize = (requiredPermission, options = {}) => {
       // 3. Check Permissions
       const userPermissions = user.role.permissions.map((p) => p.name);
       const hasPermission = Array.isArray(requiredPermission)
-        ? requiredPermission.every((p) => userPermissions.includes(p))
+        ? requiredPermission.some((p) => userPermissions.includes(p))
         : userPermissions.includes(requiredPermission);
 
       if (!hasPermission) {

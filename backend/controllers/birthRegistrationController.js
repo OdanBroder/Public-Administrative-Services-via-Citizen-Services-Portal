@@ -63,7 +63,8 @@ export const createBirthRegistration = async (req, res) => {
         !fatherResidenceType || !fatherAddress) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng điền đầy đủ thông tin cha"
+        message: "Vui lòng điền đầy đủ thông tin cha",
+        error:  "Vui lòng điền đầy đủ thông tin cha"
       });
     }
 
@@ -71,7 +72,8 @@ export const createBirthRegistration = async (req, res) => {
         !motherResidenceType || !motherAddress) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng điền đầy đủ thông tin mẹ"
+        message: "Vui lòng điền đầy đủ thông tin mẹ",
+        error: "Vui lòng điền đầy đủ thông tin mẹ"
       });
     }
 
@@ -162,13 +164,21 @@ export const getAllBirthRegistrations = async (req, res) => {
 export const getBirthRegistrationById = async (req, res) => {
   try {
     const { id } = req.params;
-    
     const birthRegistration = await BirthRegistration.findByPk(id);
+    const regId = birthRegistration ? birthRegistration.applicantId : null;
+    const userId = req.user.userId;   
+    const role = req.user.role;
+    if(role === "Citizen" && parseInt(userId) !== parseInt(regId)) {
+      return res.status(403).json({
+        success: false,
+        error: "Bạn không có quyền truy cập vào đăng ký khai sinh này"
+      });
+    }
     
     if (!birthRegistration) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy đăng ký khai sinh"
+        error: "Không tìm thấy đăng ký khai sinh"
       });
     }
     
@@ -185,3 +195,79 @@ export const getBirthRegistrationById = async (req, res) => {
     });
   }
 };
+
+export const getBirthRegistrationByApplicantId = async (req, res) => {
+  try {
+    const { applicantId } = req.params;
+    const userId = req.user.userId;
+    const role = req.user.role;
+    if(role === "Citizen" && parseInt(userId) !== parseInt(applicantId)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền truy cập vào đăng ký khai sinh này"
+      });
+    }
+    const birthRegistrations = await BirthRegistration.findAll({
+      where: { applicantId: applicantId },
+      order: [['createdAt', 'DESC']]
+    });
+    
+    if (birthRegistrations.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đăng ký khai sinh cho người nộp này"
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: birthRegistrations
+    });
+  } catch (error) {
+    console.error("Error fetching birth registrations by applicant ID:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+}
+
+export const changeBirthRegistrationStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Trạng thái không được để trống"
+      });
+    }
+
+    const birthRegistration = await BirthRegistration.findByPk(id);
+    
+    if (!birthRegistration) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đăng ký khai sinh"
+      });
+    }
+
+    birthRegistration.status = status;
+    await birthRegistration.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Cập nhật trạng thái thành công",
+      data: birthRegistration
+    });
+  } catch (error) {
+    console.error("Error changing birth registration status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+}
