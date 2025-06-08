@@ -6,7 +6,7 @@
 // --- Configuration ---
 
 // Adjust the path if your compiled JS file has a different name or location
-const wasmModulePath = './verification.js';
+const wasmModulePath = './mldsa_lib.js';
 
 // Test parameters
 const csrFsPath = '/tmp/req.csr';

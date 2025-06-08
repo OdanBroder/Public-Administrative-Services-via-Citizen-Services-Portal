@@ -19,7 +19,7 @@ using ossl_unique_ptr = std::unique_ptr<T, decltype(Func)>;
 
 using BIO_ptr = ossl_unique_ptr<BIO, BIO_free_all>;
 using EVP_PKEY_ptr = ossl_unique_ptr<EVP_PKEY, EVP_PKEY_free>;
-
+using X509_ptr = ossl_unique_ptr<X509, X509_free>;
 const int ml_dsa_65_public_key_size = 1952;
 const int ml_dsa_65_private_key_size = 4032;
 // --- Error Handling ---
@@ -32,7 +32,7 @@ const int ml_dsa_65_private_key_size = 4032;
 #endif 
 
 void handle_openssl_error(const char* context);
-
+X509_ptr load_certificate(const std::string& cert_path);
 // --- Helper Functions ---
 
 /**
@@ -89,9 +89,14 @@ EXPOSE_WASM void freeMemory(void* ptr);
   * @param public_key The return public key buffer.
   * @return true on success, false on failure.
   */
-
+EXPOSE_WASM bool sha256_digest(const char *message_chr, size_t message_len, char *digest_out);
 EXPOSE_WASM bool generate_mldsa65_keypair(char *private_key, char *public_key);
-
+EXPOSE_WASM bool sign_certificate(const char* csr_path,
+                      const char* ca_cert_path,
+                      const char* ca_privkey_buf,  
+                      size_t ca_privkey_len,
+                      const char* result_cert_path,
+                      int days_valid = 365);
 /**
  * @brief Generates a Certificate Signing Request (CSR) using a private key.
  * @param private_key_char The private key buffer

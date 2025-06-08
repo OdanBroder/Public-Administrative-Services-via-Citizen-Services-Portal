@@ -134,37 +134,50 @@ bool generate_csr(char* private_key_chr, char* csr_path, char** subject_info_vec
         return false; 
     }
     // Write CSR to file
-    BIO* mem = BIO_new(BIO_s_mem());
+    BIO_ptr mem(BIO_new(BIO_s_mem()), BIO_free_all);
     if (!mem) return false;
 
-    if (!PEM_write_bio_PrivateKey(mem, pkey.get(), nullptr, nullptr, 0, nullptr, nullptr)) {
-        BIO_free(mem);
+    if (!PEM_write_bio_X509_REQ(mem.get(), req.get())) {
+        BIO_free(mem.get());
         return false;
     }
 
     char* data = nullptr;
-    long len = BIO_get_mem_data(mem, &data);  // `data` is valid as long as BIO is not freed
+    long len = BIO_get_mem_data(mem.get(), &data);  // `data` is valid as long as BIO is not freed
 
     std::ofstream out(csr_path, std::ios::binary);
     out.write(data, len);
     out.close();
-    BIO_free(mem);
     return true;
 }
 
 X509_REQ_ptr load_csr(const std::string& csr_path) {
-    BIO_ptr csr_bio(BIO_new_file(csr_path.c_str(), "rb"), BIO_free_all); // Corrected init
-    if (!csr_bio) {
-        handle_openssl_error("BIO_new_file for loading CSR");
-        return X509_REQ_ptr(nullptr, X509_REQ_free); // Corrected return
+    // Read the file into a std::string
+    std::ifstream file(csr_path, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open CSR file: " << csr_path << std::endl;
+        return X509_REQ_ptr(nullptr, X509_REQ_free);
     }
+
+    std::string pem((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    // Create a memory BIO with the contents
+    BIO_ptr csr_bio(BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size())), BIO_free_all);
+    if (!csr_bio) {
+        handle_openssl_error("BIO_new_mem_buf for loading CSR");
+        return X509_REQ_ptr(nullptr, X509_REQ_free);
+    }
+
+    // Parse the CSR from the BIO
     X509_REQ* req_raw = PEM_read_bio_X509_REQ(csr_bio.get(), nullptr, nullptr, nullptr);
     if (!req_raw) {
         handle_openssl_error("PEM_read_bio_X509_REQ");
-        return X509_REQ_ptr(nullptr, X509_REQ_free); // Corrected return
+        return X509_REQ_ptr(nullptr, X509_REQ_free);
     }
-    return X509_REQ_ptr(req_raw, X509_REQ_free); // Corrected init
+
+    return X509_REQ_ptr(req_raw, X509_REQ_free);
 }
+
 
 bool generate_self_signed_certificate(char* csr_path, char *private_key, char *certificate_path, int days) {
     X509_REQ_ptr req = load_csr(csr_path);
@@ -255,15 +268,90 @@ bool generate_self_signed_certificate(char* csr_path, char *private_key, char *c
     }
 
     // Write certificate to file
-    BIO_ptr cert_bio(BIO_new_file(certificate_path, "wb"), BIO_free_all); // Corrected init
-    if (!cert_bio) {
-        handle_openssl_error("BIO_new_file for certificate");
-        return false;
-    }
-    if (PEM_write_bio_X509(cert_bio.get(), cert.get()) != 1) {
-        handle_openssl_error("PEM_write_bio_X509");
+    BIO* mem = BIO_new(BIO_s_mem());
+    if (!mem) return false;
+
+    if (!PEM_write_bio_X509(mem, cert.get())) {
+        BIO_free(mem);
         return false;
     }
 
+    char* data = nullptr;
+    long len = BIO_get_mem_data(mem, &data);  // `data` is valid as long as BIO is not freed
+
+    std::ofstream out(certificate_path, std::ios::binary);
+    out.write(data, len);
+    out.close();
+    BIO_free(mem);
+    return true;
+}
+
+bool sign_certificate(const char* csr_path,
+                      const char* ca_cert_path,
+                      const char* ca_privkey_buf,  
+                      size_t ca_privkey_len,
+                      const char* result_cert_path,
+                      int days_valid)
+{
+    // Load CSR
+    X509_REQ_ptr csr = load_csr(csr_path);
+    if (!csr) return false;
+
+    // Load CA certificate
+    X509_ptr ca_cert = load_certificate(ca_cert_path);
+    if (!ca_cert) return false;
+
+    // Load CA private key from memory buffer
+    EVP_PKEY_ptr ca_pkey(
+        EVP_PKEY_new_raw_private_key(EVP_PKEY_ML_DSA_65, nullptr, (unsigned char*) ca_privkey_buf, ca_privkey_len),
+        EVP_PKEY_free);
+    if (!ca_pkey) {
+        handle_openssl_error("EVP_PKEY_new_raw_private_key");
+        return false;
+    }
+
+    // Create new certificate
+    X509_ptr cert(X509_new(), X509_free);
+    if (!cert) return false;
+
+    X509_set_version(cert.get(), 2);  // X.509v3
+    ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1);
+    X509_gmtime_adj(X509_get_notBefore(cert.get()), 0);
+    X509_gmtime_adj(X509_get_notAfter(cert.get()), 60 * 60 * 24 * days_valid);
+
+    // Set subject and public key from CSR
+    X509_set_subject_name(cert.get(), X509_REQ_get_subject_name(csr.get()));
+    EVP_PKEY_ptr req_pubkey(X509_REQ_get_pubkey(csr.get()), EVP_PKEY_free);
+    if (!req_pubkey) {
+        handle_openssl_error("Extracting public key from CSR");
+        return false;
+    }
+    X509_set_pubkey(cert.get(), req_pubkey.get());
+
+    // Set issuer from CA certificate
+    X509_set_issuer_name(cert.get(), X509_get_subject_name(ca_cert.get()));
+
+    // Sign with CA private key (digest may be ignored for ML-DSA)
+    if (!X509_sign(cert.get(), ca_pkey.get(), nullptr)) {
+        handle_openssl_error("X509_sign");
+        return false;
+    }
+
+    // Write signed certificate to output file
+    BIO* mem = BIO_new(BIO_s_mem());
+    if (!mem) return false;
+
+    if (!PEM_write_bio_X509(mem, cert.get())) {
+        BIO_free(mem);
+        return false;
+    }
+
+    char* data = nullptr;
+    long len = BIO_get_mem_data(mem, &data);  // `data` is valid as long as BIO is not freed
+
+    std::ofstream out(result_cert_path, std::ios::binary);
+    out.write(data, len);
+    out.close();
+    BIO_free(mem);
     return true;
 }

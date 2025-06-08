@@ -29,18 +29,33 @@ void handle_openssl_error(const char* context);
 bool read_file_bytes(const std::string& file_path, std::vector<unsigned char>& data);
 
 X509_ptr load_certificate(const std::string& cert_path) {
-    BIO_ptr cert_bio(BIO_new_file(cert_path.c_str(), "rb"), BIO_free_all); // Corrected init
-    if (!cert_bio) {
-        handle_openssl_error("BIO_new_file for loading certificate");
-        return X509_ptr(nullptr, X509_free); // Corrected return
+    // Open certificate file using std::ifstream
+    std::ifstream file(cert_path, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open certificate file: " << cert_path << std::endl;
+        return X509_ptr(nullptr, X509_free);
     }
+
+    // Read the entire file into a std::string
+    std::string pem_data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    // Create a memory BIO from the PEM data
+    BIO_ptr cert_bio(BIO_new_mem_buf(pem_data.data(), static_cast<int>(pem_data.size())), BIO_free_all);
+    if (!cert_bio) {
+        handle_openssl_error("BIO_new_mem_buf for loading certificate");
+        return X509_ptr(nullptr, X509_free);
+    }
+
+    // Parse X509 certificate from the memory BIO
     X509* cert_raw = PEM_read_bio_X509(cert_bio.get(), nullptr, nullptr, nullptr);
     if (!cert_raw) {
         handle_openssl_error("PEM_read_bio_X509");
-        return X509_ptr(nullptr, X509_free); // Corrected return
+        return X509_ptr(nullptr, X509_free);
     }
-    return X509_ptr(cert_raw, X509_free); // Corrected init
+
+    return X509_ptr(cert_raw, X509_free);
 }
+
 
 
 // Helper to load public key (implementation)
@@ -133,13 +148,15 @@ bool verify_signature_with_cert(const char *certificate_path_chr, const char *si
 
 
     bool result = false;
-    if (key_type == EVP_PKEY_EC) {
-        std::cout << "Verifying using ECDSA (key from certificate)..." << std::endl;
-        result = verify_mldsa65(temp_pubkey.get(), signature_path,  message_chr, message_len);  
-    } else {
-        std::cerr << "Error: Unsupported key type in certificate for verification (" << OBJ_nid2sn(key_type) << ")." << std::endl;
-        result = false;
-    }
+    result = verify_mldsa65(temp_pubkey.get(), signature_path,  message_chr, message_len);  
+
+    // if (key_type == EVP_PKEY_EC) {
+    //     std::cout << "Verifying using ECDSA (key from certificate)..." << std::endl;
+    //     result = verify_mldsa65(temp_pubkey.get(), signature_path,  message_chr, message_len);  
+    // } else {
+    //     std::cerr << "Error: Unsupported key type in certificate for verification (" << OBJ_nid2sn(key_type) << ")." << std::endl;
+    //     result = false;
+    // }
 
     // Clean up the temporary file
 
