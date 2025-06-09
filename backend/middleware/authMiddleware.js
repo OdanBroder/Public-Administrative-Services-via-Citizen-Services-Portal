@@ -122,6 +122,31 @@ const verifyRole = (allowedRoles) => {
   };
 };
 
+// Token verification middleware
+const verifyToken = async (token) => {
+  try {
+    // Check if token is blacklisted
+    const blacklisted = await BlacklistedToken.findOne({ 
+      where: { token: token } 
+    });
+    
+    if (blacklisted) {
+      throw new Error('Token không hợp lệ (đã bị chặn)');
+    }
+
+    const decoded = jwt.verify(token, config.jwt.secret);
+    return decoded;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Token đã hết hạn');
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Token không hợp lệ');
+    }
+    throw error;
+  }
+};
+
 // Specific role middleware
 const verifyAdmin = verifyRole('Admin');
 const verifyBCA = verifyRole('BCA');
@@ -266,5 +291,6 @@ export {
   verifyPolice,
   verifyCitizen,
   checkPermission,
-  authorize
+  authorize,
+  verifyToken
 };

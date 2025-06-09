@@ -77,7 +77,14 @@ export const approveApplication = async (req, res) => {
     const { applicationId } = req.params;
     const bcaId = req.user.userId;
 
-    const application = await BirthRegistration.findByPk(applicationId);
+    const application = await BirthRegistration.findByPk(applicationId, {
+      include: [{
+        model: FilePath,
+        as: 'filePath',
+        attributes: ['application']
+      }]
+    });
+    
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -104,11 +111,14 @@ export const approveApplication = async (req, res) => {
       });
     }
 
+    // Construct application file path
+    const applicationPath = path.join(application.filePath.application, applicationId.toString());
+    
     // Verify all required files exist
     const requiredFiles = [
       bcaFilePath.private_key,
       bcaFilePath.certificate,
-      application.file_path
+      applicationPath
     ];
 
     const filesExist = await Promise.all(
@@ -126,17 +136,23 @@ export const approveApplication = async (req, res) => {
     const bcaPrivateKey = ScalableTPMService.decryptWithRootKey(
       await fs.readFile(bcaFilePath.private_key, 'utf8')
     );
-    const bcaCertificate = await fs.readFile(bcaFilePath.certificate, 'utf8');
 
     // Create signature directory if it doesn't exist
-    const signatureDir = path.join(path.dirname(application.file_path), 'signatures');
+    const signatureDir = path.join(applicationPath, 'signatures');
     await fs.mkdir(signatureDir, { recursive: true });
 
+    const sigFile = path.join(applicationPath, 'sig', 'signature.bin');   // signature that backend sign in application
+    const sigData = await fs.readFile(sigFile, 'utf8');
+    const message = {
+      signature: sigData,
+      time: Date.now()
+    };
+    
     // Sign the application
     const signaturePath = path.join(signatureDir, 'bca_signature.sig');
-    const signed = await MLDSAWrapper.signFile(
+    const signed = await MLDSAWrapper._sign_mldsa65(
       bcaPrivateKey,
-      application.file_path,
+      JSON.stringify(message),
       signaturePath
     );
 

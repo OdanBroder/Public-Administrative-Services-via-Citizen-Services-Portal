@@ -143,7 +143,14 @@ export const approveMedicalCoverage = async (req, res) => {
     const { applicationId } = req.params;
     const sytId = req.user.userId;
 
-    const application = await MedicalCoverage.findByPk(applicationId);
+    const application = await MedicalCoverage.findByPk(applicationId, {
+      include: [{
+        model: FilePath,
+        as: 'filePath',
+        attributes: ['application']
+      }]
+    });
+    
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -170,11 +177,14 @@ export const approveMedicalCoverage = async (req, res) => {
       });
     }
 
+    // Construct application file path
+    const applicationPath = path.join(application.filePath.application, applicationId.toString());
+    
     // Verify all required files exist
     const requiredFiles = [
       sytFilePath.private_key,
       sytFilePath.certificate,
-      application.file_path
+      applicationPath
     ];
 
     const filesExist = await Promise.all(
@@ -188,21 +198,27 @@ export const approveMedicalCoverage = async (req, res) => {
       });
     }
 
-    // Read SYT's private key and certificate
+    // Read SYT's private key
     const sytPrivateKey = ScalableTPMService.decryptWithRootKey(
       await fs.readFile(sytFilePath.private_key, 'utf8')
     );
-    const sytCertificate = await fs.readFile(sytFilePath.certificate, 'utf8');
 
     // Create signature directory if it doesn't exist
-    const signatureDir = path.join(path.dirname(application.file_path), 'signatures');
+    const signatureDir = path.join(applicationPath, 'signatures');
     await fs.mkdir(signatureDir, { recursive: true });
 
+    const sigFile = path.join(applicationPath, 'sig', 'signature.bin');   // signature that backend sign in application
+    const sigData = await fs.readFile(sigFile, 'utf8');
+    const message = {
+      signature: sigData,
+      time: Date.now()
+    };
+    
     // Sign the application
     const signaturePath = path.join(signatureDir, 'syt_signature.sig');
-    const signed = await MLDSAWrapper.signFile(
+    const signed = await MLDSAWrapper._sign_mldsa65(
       sytPrivateKey,
-      application.file_path,
+      JSON.stringify(message),
       signaturePath
     );
 
@@ -241,7 +257,14 @@ export const approveServiceHealth = async (req, res) => {
     const { applicationId } = req.params;
     const sytId = req.user.userId;
 
-    const application = await ServiceHealth.findByPk(applicationId);
+    const application = await ServiceHealth.findByPk(applicationId, {
+      include: [{
+        model: FilePath,
+        as: 'filePath',
+        attributes: ['application']
+      }]
+    });
+    
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -268,11 +291,14 @@ export const approveServiceHealth = async (req, res) => {
       });
     }
 
+    // Construct application file path
+    const applicationPath = path.join(application.filePath.application, applicationId.toString());
+    
     // Verify all required files exist
     const requiredFiles = [
       sytFilePath.private_key,
       sytFilePath.certificate,
-      application.file_path
+      applicationPath
     ];
 
     const filesExist = await Promise.all(
@@ -286,21 +312,27 @@ export const approveServiceHealth = async (req, res) => {
       });
     }
 
-    // Read SYT's private key and certificate
+    // Read SYT's private key
     const sytPrivateKey = ScalableTPMService.decryptWithRootKey(
       await fs.readFile(sytFilePath.private_key, 'utf8')
     );
-    const sytCertificate = await fs.readFile(sytFilePath.certificate, 'utf8');
 
     // Create signature directory if it doesn't exist
-    const signatureDir = path.join(path.dirname(application.file_path), 'signatures');
+    const signatureDir = path.join(applicationPath, 'signatures');
     await fs.mkdir(signatureDir, { recursive: true });
 
+    const sigFile = path.join(applicationPath, 'sig', 'signature.bin');   // signature that backend sign in application
+    const sigData = await fs.readFile(sigFile, 'utf8');
+    const message = {
+      signature: sigData,
+      time: Date.now()
+    };
+    
     // Sign the application
     const signaturePath = path.join(signatureDir, 'syt_signature.sig');
-    const signed = await MLDSAWrapper.signFile(
+    const signed = await MLDSAWrapper._sign_mldsa65(
       sytPrivateKey,
-      application.file_path,
+      JSON.stringify(message),
       signaturePath
     );
 

@@ -101,7 +101,8 @@ class User extends Model {
         private_key: privateKeyPath,
         public_key: publicKeyPath,
         csr: csrPath,
-        certificate: certPath
+        certificate: certPath,
+        application: `/working/user/${userId}/application`
       });
 
       console.log(`Police role initialized for user ${userId}`);
