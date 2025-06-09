@@ -1,4 +1,4 @@
-import { authenticate } from '../middleware/auth.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 import { upload } from '../config/multerConfig.js';
 import express from 'express';
 import { createCitizen, getCitizenById } from '../controllers/citizenController.js';

@@ -6,7 +6,7 @@ import {  createBirthRegistration,
   getBirthRegistrationByApplicantId,
   changeBirthRegistrationStatus
 } from '../controllers/birthRegistrationController.js';
-import { authenticate, authorize } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/authMiddleware.js';
 
 // @route   POST api/birth-registration
 // @desc    Create a new birth registration

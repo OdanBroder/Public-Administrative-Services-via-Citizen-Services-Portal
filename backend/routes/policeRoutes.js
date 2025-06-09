@@ -1,6 +1,6 @@
 import express from 'express';
 import { getUnverifiedUsers, signUserCertificate } from '../controllers/policeController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 import { checkRole } from '../middleware/checkRole.js';
 
 const router = express.Router();
