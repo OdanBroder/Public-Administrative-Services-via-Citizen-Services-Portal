@@ -32,7 +32,6 @@ export const createCitizen = async (req, res) => {
       !noiThuongTru
     ) {
       return res.status(400).json({
-      return res.status(400).json({
         success: false,
         message: "Vui lòng điền đầy đủ thông tin",
         message: "Vui lòng điền đầy đủ thông tin"
