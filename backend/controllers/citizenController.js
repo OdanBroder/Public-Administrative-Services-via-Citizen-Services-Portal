@@ -33,8 +33,7 @@ export const createCitizen = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng điền đầy đủ thông tin",
-        message: "Vui lòng điền đầy đủ thông tin"
+        message: "Vui lòng điền đầy đủ thông tin" 
       });
     }
 
@@ -43,10 +42,8 @@ export const createCitizen = async (req, res) => {
     const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({
-      return res.status(404).json({
         success: false,
         message: "Không tìm thấy người dùng"
-        message: "Không tìm thấy người dùng",
       });
     }
 
@@ -56,7 +53,6 @@ export const createCitizen = async (req, res) => {
     });
 
     if (existingCitizen) {
-      return res.status(400).json({
       return res.status(400).json({
         success: false,
         message:
@@ -108,10 +104,6 @@ export const createCitizen = async (req, res) => {
         certificate: null, // Will be updated when certificate is signed
         application: applicationDir // Set base application directory
       });
-
-      if (!filePath) {
-        throw new Error('Failed to save file paths to database');
-      }
 
       // Save private and public keys to files
       await fs.writeFile(
@@ -206,10 +198,9 @@ export const createCitizen = async (req, res) => {
   } catch (error) {
     console.error("Database error:", error);
     res.status(500).json({
-    res.status(500).json({
       success: false,
       message: "Lỗi máy chủ",
-      error: error.message,
+      error: error.message
     });
   }
 };
