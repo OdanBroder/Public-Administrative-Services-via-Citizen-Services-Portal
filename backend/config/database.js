@@ -1,6 +1,5 @@
 import { Sequelize } from 'sequelize';
 import config from './config.js';
-
 // Create Sequelize instance with retry logic
 const createSequelizeInstance = () => {
     return new Sequelize(

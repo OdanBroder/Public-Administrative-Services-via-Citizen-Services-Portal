@@ -1,31 +1,15 @@
 import multer from 'multer';
 import path from 'path';
-// import { v4: uuidv4 } from "uuid";
-// 
-// Set storage engine
-const storage = multer.diskStorage({
-  destination: "./uploads/",
-  filename: function (req, file, cb) {
-    // Generate UUID if not already in request
-    if (req.user.userId === "" || req.user.userId === undefined) {
-      throw new Error("Empty id");
-    }
-    
-    // Determine if this is front or back image based on field name
-    const suffix = file.fieldname === "hinhAnhCCCDTruoc" ? "-1" : "-2";
-    
-    // Create filename with UUID and suffix
-    const filename = `CCCD-${req.user.userId}${suffix}${path.extname(file.originalname)}`;
-    
-    cb(null, filename);
-  },
-});
-
-// Init upload
+import { encrypt } from './cryptoUtils.js';
+import tpmController from '../utils/crypto/tpmController.js'
+// Set storage engine to memoryStorage to get file buffer
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(), 
   limits: { fileSize: 10000000 }, // Limit file size (e.g., 10MB)
   fileFilter: function (req, file, cb) {
+    if (!req.user || !req.user.userId) {
+        return cb(new Error("User not authenticated or user ID missing."));
+    }
     checkFileType(file, cb);
   },
 }).fields([
@@ -33,13 +17,33 @@ const upload = multer({
   { name: 'hinhAnhCCCDSau', maxCount: 1 }
 ]);
 
+// Middleware to encrypt the file buffer
+const encryptFileMiddleware = (req, res, next) => {
+  if (req.files) {
+    // req.files is an object where keys are field names and values are arrays of files
+    for (const fieldName in req.files) {
+      req.files[fieldName].forEach(file => {
+        const encrypted = encrypt(file.buffer);
+        file.buffer = encrypted;
+      });
+    }
+  }
+  next();
+};
+
+function generateFilename(req, file) {
+  if (!req.user || req.user.userId === "" || req.user.userId === undefined) {
+    throw new Error("User ID is missing or empty. Cannot generate filename.");
+  }
+
+  const suffix = file.fieldname === "hinhAnhCCCDTruoc" ? "-1" : "-2";
+  return `CCCD-${req.user.userId}${suffix}${path.extname(file.originalname)}`;
+}
+
 // Check file type
 function checkFileType(file, cb) {
-  // Allowed ext
   const filetypes = /jpeg|jpg|png|gif/;
-  // Check ext
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  // Check mime
   const mimetype = filetypes.test(file.mimetype);
 
   if (mimetype && extname) {
@@ -49,4 +53,5 @@ function checkFileType(file, cb) {
   }
 }
 
-export {upload};
+export { upload, encryptFileMiddleware, generateFilename };
+

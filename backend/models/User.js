@@ -304,6 +304,44 @@ async function createAdminUser(){
       });
       console.log('Regular user created successfully');
     }
+    const existingStaff = await User.findOne({
+      where: {
+        username: 'staff'
+      }
+    });
+    if(!existingStaff) {
+      const staffUser = await User.create({
+        username: 'staff',
+        email: "staff@example.com",
+        firstName: 'Staff',
+        lastName: 'User',
+        password: "Staff@@123456", // Using the password from seed.sql
+        role_id: 3, // Assuming role_id 3 is for Staff
+        completeProfile: true,
+        is_email_verified: true,
+        office_id: 1 // Assuming office_id 1 is for the default office
+      });
+      console.log('Staff user created successfully');
+    }
+    const existingHead = await User.findOne({
+      where: {
+        username: 'head'
+      }
+    });
+    if(!existingHead) {
+      const headUser = await User.create({
+        username: 'head',
+        email: "head@example.com",
+        firstName: 'Head',
+        lastName: 'User',
+        password: "Head@@123456", // Using the password from seed.sql
+        role_id: 4, // Assuming role_id 4 is for Head
+        completeProfile: true,
+        is_email_verified: true,
+        office_id: 1 // Assuming office_id 1 is for the default office
+      });
+      console.log('Head user created successfully');
+    }
 
     // Check if police user exists
     const existingPolice = await User.findOne({

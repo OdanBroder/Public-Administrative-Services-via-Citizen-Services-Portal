@@ -32,6 +32,9 @@ services:
       dockerfile: Dockerfile
     container_name: citizen-services-backend
     restart: always
+    devices:
+      - "/dev/tpm0:/dev/tpm0"
+      - "/dev/tpmrm0:/dev/tpmrm0"
     depends_on:
       mysql:
         condition: service_healthy
@@ -55,6 +58,9 @@ services:
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
+      - tpm_data:/app/data
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - /tmp/tpm-container:/tmp/tpm-service
     networks:
       - app-network
 
@@ -108,3 +114,5 @@ volumes:
     name: citizen_services_frontend_node_modules
   frontend_dist:
     name: citizen_services_frontend_dist
+  tpm_data: 
+    name: citizen_services_tpm_data

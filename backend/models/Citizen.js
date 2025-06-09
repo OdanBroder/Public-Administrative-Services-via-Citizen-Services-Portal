@@ -1,6 +1,10 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database.js';
 import User from './User.js';
+import { encrypt, decrypt } from '../config/cryptoUtils.js';
+
+const encrypt_fields = ['soCCCD', 'queQuan', 'noiThuongTru'];
+
 
 class Citizen extends Model {}
 
@@ -70,7 +74,52 @@ Citizen.init({
   sequelize,
   modelName: 'Citizen',
   tableName: 'citizens',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeCreate: (citizen, options) => {
+      encrypt_fields.forEach(field => {
+        if (citizen[field]) {
+          citizen[field] = encrypt(citizen[field]);
+        }
+      });
+    },
+    beforeUpdate: (citizen, options) => {
+      encrypt_fields.forEach(field => {
+        if (citizen.changed(field)) {
+          citizen[field] = encrypt(citizen[field]);
+        }
+      });
+    },
+    afterFind: (citizen, options) => {
+      if (citizen) {
+        if (Array.isArray(citizen)) {
+          citizen.forEach(c => {
+            encrypt_fields.forEach(field => {
+              if (c[field]) {
+                try {
+                  c[field] = decrypt(c[field]);
+                } catch (e) {
+                  console.error(`Decryption failed for field ${field}:`, e.message);
+               }
+              }
+            });
+          });
+        } else {
+          encrypt_fields.forEach(field => {
+            if (citizen[field]) {
+              try {
+                citizen[field] = decrypt(citizen[field]);
+              } catch (e) {
+                console.error(`Decryption failed for field ${field}:`, e.message);
+ 
+              }
+            }
+          });
+        }
+      }
+    },
+  }
 });
 
 export default Citizen;
+
