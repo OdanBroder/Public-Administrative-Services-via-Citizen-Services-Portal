@@ -61,10 +61,10 @@ export const createCitizen = async (req, res) => {
     }
 
     // Create user directory if it doesn't exist
-    const userDir = path.join(process.cwd(), "working", "user", id.toString());
+    const userDir = path.join("/working", "user", id.toString());
     await fs.mkdir(userDir, { recursive: true });
     await fs.mkdir(path.join(userDir, "csr"), { recursive: true });
-    const userDir = path.join(process.cwd(), 'working', 'user', id.toString());
+    const userDir = path.join('/working', 'user', id.toString());
     const certDir = path.join(userDir, 'cert');
     const applicationDir = path.join(userDir, 'application');
 
