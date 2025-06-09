@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.get('/auth/role', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const {role} = response.data;
+      const { role } = response.data;
       setRole(role);
     } catch (error) {
       console.error('Failed to fetch role:', error);
@@ -80,8 +80,8 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       // debugger;
       console.log(JSON.stringify(user));
-      if(user.completedProfile === false){
-        return {success : true, finish_info: false};
+      if (user.completedProfile === false) {
+        return { success: true, finish_info: false };
       }
       return { success: true, finish_info: true };
     } catch (error) {
@@ -108,10 +108,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    setUser(null);
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        // Call API to blacklist the token
+        await api.post('/auth/logout', {
+          token: token
+        });
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      // Remove tokens from localStorage and reset user state
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setUser(null);
+      setRole(null);
+    }
   };
 
   const updateProfile = async (updates) => {
@@ -127,7 +141,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  
+
 
   return (
     <AuthContext.Provider

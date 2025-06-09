@@ -1,13 +1,9 @@
 // backend/routes/exampleRoute.js
 import express from 'express';
-import lib from '../ffi/external.js';
+import { addNumbers } from '../controllers/exampleController.js';
 
 const router = express.Router();
 
-router.get('/add', (req, res) => {
-  const result = lib.addNumbers(5, 3);
-  res.json({ result });
-});
-
+router.get('/add', addNumbers);
 
 export default router;

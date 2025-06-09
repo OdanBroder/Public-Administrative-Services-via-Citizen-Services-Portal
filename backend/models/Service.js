@@ -1,7 +1,10 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database.js';
 import Office from './Office.js'; // Assuming you have an Office model
-const Service = sequelize.define('Service', {
+
+class Service extends Model {}
+
+Service.init({
   id: {
     type: DataTypes.INTEGER.UNSIGNED,
     primaryKey: true,
@@ -43,6 +46,8 @@ const Service = sequelize.define('Service', {
     defaultValue: DataTypes.NOW
   }
 }, {
+  sequelize,
+  modelName: 'Service',
   tableName: 'services',
   timestamps: true,
   createdAt: 'created_at',

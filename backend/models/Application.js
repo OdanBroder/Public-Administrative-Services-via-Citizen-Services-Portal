@@ -1,9 +1,11 @@
-import { DataTypes } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 import User from './User.js';
 import Service from './Service.js';
 
-const Application = sequelize.define('Application', {
+class Application extends Model {}
+
+Application.init({
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -25,19 +27,29 @@ const Application = sequelize.define('Application', {
       key: 'id'
     }
   },
+  application_data: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
   status: {
     type: DataTypes.ENUM('pending', 'approved', 'rejected'),
     defaultValue: 'pending'
   },
-  created_at: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+  processed_by: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   },
-  updated_at: {
+  processed_at: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    allowNull: true
   }
 }, {
+  sequelize,
+  modelName: 'Application',
   tableName: 'applications',
   timestamps: true,
   createdAt: 'created_at',
@@ -45,7 +57,8 @@ const Application = sequelize.define('Application', {
 });
 
 // Define associations
-Application.belongsTo(User, { foreignKey: 'user_id' });
-Application.belongsTo(Service, { foreignKey: 'service_id' });
+Application.belongsTo(User, { foreignKey: 'user_id', as: 'applicant' });
+Application.belongsTo(Service, { foreignKey: 'service_id', as: 'service' });
+Application.belongsTo(User, { foreignKey: 'processed_by', as: 'processor' });
 
 export default Application; 

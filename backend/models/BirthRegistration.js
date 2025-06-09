@@ -186,6 +186,11 @@ BirthRegistration.init({
       model: Service, // Assuming you have a Services table
       key: "id"
     }
+  },
+  file_path: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    defaultValue: null
   }
 },
 {

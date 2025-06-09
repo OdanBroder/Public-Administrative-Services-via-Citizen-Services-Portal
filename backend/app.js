@@ -17,6 +17,7 @@ import consoleRoute from './routes/console.js';
 import Role from './models/Role.js';
 import birthRegistrationRoutes from './routes/birthApplicationRoutes.js';
 import servicesRoutes from './routes/serviceRoute.js';
+import adminRoutes from './routes/adminRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/admin', consoleRoute);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/birth-registration', birthRegistrationRoutes);
 app.use('/api/services',  servicesRoutes)
+app.use('/api/admin', adminRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

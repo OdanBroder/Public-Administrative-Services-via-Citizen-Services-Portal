@@ -40,7 +40,7 @@ const Login = () => {
   <div className="max-w-xl w-full space-y-8 shadow-2xl p-24 rounded-xl">
     <div>
       <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-        Sign in to your account
+        Đăng nhập vào tài khoản
       </h2>
     </div>
     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -51,27 +51,27 @@ const Login = () => {
       )}
       <div className="rounded-md shadow-sm -space-y-px">
         <div>
-          <label htmlFor="email" className="sr-only">Email address</label>
+          <label htmlFor="email" className="sr-only">Địa chỉ email</label>
           <input
             id="email"
             name="email"
             type="email"
             required
             className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-            placeholder="Email address"
+            placeholder="Địa chỉ email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
         <div>
-          <label htmlFor="password" className="sr-only">Password</label>
+          <label htmlFor="password" className="sr-only">Mật khẩu</label>
           <input
             id="password"
             name="password"
             type="password"
             required
             className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-            placeholder="Password"
+            placeholder="Mật khẩu"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />

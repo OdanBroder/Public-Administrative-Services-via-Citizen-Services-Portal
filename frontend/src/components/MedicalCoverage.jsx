@@ -80,7 +80,7 @@ const MedicalCoverage = () => {
       const serviceRes = await api.get('/service-health');
       setServices(serviceRes.data || []);
       
-      // Fetch medical coverage
+      // Fetch Bảo hiểm Y tế
       try {
         // For admin/staff, fetch all coverage
         // For regular users, fetch only their coverage
@@ -277,14 +277,14 @@ const MedicalCoverage = () => {
           },
         }}
       >
-        {role === 'Admin' ? 'Service Portal Administration' : 'Medical Coverage & Services'}
+        {role === 'Admin' ? 'Quản trị cổng dịch vụ' : 'Bảo hiểm Y tế & Dịch vụ'}
       </Typography>
 
       {/* Tab navigation for both admin and regular users */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange}>
-          {/* Both users and admins can see Medical Coverage tab */}
-          <Tab label="Medical Coverage" />
+          {/* Both users and admins can see Bảo hiểm Y tế tab */}
+          <Tab label="Bảo hiểm Y tế" />
           
           {/* Both users and admins can see Available Services tab */}
           <Tab label={isAdmin ? "Service Health Management" : "Available Services"} />
@@ -304,7 +304,7 @@ const MedicalCoverage = () => {
       )}
 
       {activeTab === 0 ? (
-        // Medical Coverage Tab - for both user and admin
+        // Bảo hiểm Y tế Tab - for both user and admin
         <>
           <Box sx={{ mb: 2 }}>
             <Button variant="contained" color="primary" onClick={() => handleOpen()}>
@@ -511,12 +511,12 @@ const MedicalCoverage = () => {
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>
-          {activeTab === 0 ? 'Add New Medical Coverage' : 
-            (editingService ? 'Edit Service Health' : 'Add New Service Health')}
+          {activeTab === 0 ? 'Thêm bảo hiểm Y tế' : 
+            (editingService ? 'Chỉnh sửa dịch vụ sức khỏe' : 'Thêm dịch vụ sức khỏe')}
         </DialogTitle>
         <DialogContent>
           {activeTab === 0 ? (
-            // Medical Coverage Form
+            // Bảo hiểm Y tế Form
             <Box component="form" sx={{ mt: 2 }}>
               {isAdmin && (
                 <TextField
@@ -540,7 +540,7 @@ const MedicalCoverage = () => {
               />
               <TextField
                 fullWidth
-                label="Start Date"
+                label="Ngày bắt đầu"
                 name="startDate"
                 type="date"
                 value={formData.startDate}
@@ -551,7 +551,7 @@ const MedicalCoverage = () => {
               />
               <TextField
                 fullWidth
-                label="End Date"
+                label="Ngày kết thúc"
                 name="endDate"
                 type="date"
                 value={formData.endDate}
@@ -562,7 +562,7 @@ const MedicalCoverage = () => {
               />
               <TextField
                 fullWidth
-                label="Monthly Premium"
+                label="Phí bảo hiểm hàng tháng"
                 name="monthlyPremium"
                 type="number"
                 value={formData.monthlyPremium}
@@ -578,7 +578,7 @@ const MedicalCoverage = () => {
                   fullWidth
                   margin="normal"
                   name="serviceName"
-                  label="Service Name"
+                  label="Tên dịch vụ"
                   value={formData.serviceName}
                   onChange={handleChange}
                   required
@@ -589,20 +589,20 @@ const MedicalCoverage = () => {
                 fullWidth
                 margin="normal"
                 name="status"
-                label="Status"
+                label="Trạng thái"
                 value={formData.status}
                 onChange={handleChange}
                 required
               >
-                <MenuItem value="UP">Operational</MenuItem>
-                <MenuItem value="DEGRADED">Degraded</MenuItem>
-                <MenuItem value="DOWN">Down</MenuItem>
+                <MenuItem value="UP">Hoạt động</MenuItem>
+                <MenuItem value="DEGRADED">Suy giảm</MenuItem>
+                <MenuItem value="DOWN">Ngừng hoạt động</MenuItem>
               </TextField>
               <TextField
                 fullWidth
                 margin="normal"
                 name="responseTime"
-                label="Response Time (ms)"
+                label="Thời gian phản hồi (ms)"
                 type="number"
                 value={formData.responseTime}
                 onChange={handleChange}

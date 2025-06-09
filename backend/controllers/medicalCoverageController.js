@@ -55,7 +55,7 @@ export const getMedicalCoverage = async (req, res) => {
     });
     
     if (!coverage || coverage.length === 0) {
-      return res.status(404).json({ message: 'No medical coverage found for this user' });
+      return res.status(404).json({ message: 'No Bảo hiểm Y tế found for this user' });
     }
     
     res.json(coverage);

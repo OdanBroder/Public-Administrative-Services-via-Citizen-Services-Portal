@@ -40,7 +40,7 @@ const Navbar = ({ user, role }) => {
                   Quản lý người dùng 
                 </Link>
               </>    
-            ) : role === "Head" || role === "Staff" ? (
+            ) : (user && (role === "Head" || role === "Staff")) ? (
               <>
                 <Link
                   to="/view-applications"
@@ -49,7 +49,7 @@ const Navbar = ({ user, role }) => {
                   Quản lý thủ tục 
                 </Link>
               </>
-             ) : (  
+             ) : (user) ? (  
               <>
                 <Link
                   to="/public-services"
@@ -61,7 +61,7 @@ const Navbar = ({ user, role }) => {
                   to="/medical-coverage"
                   className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
                 >
-                  Medical Coverage
+                  Bảo hiểm Y tế
                 </Link>
                 <Link
                   to="/my-application"
@@ -70,7 +70,7 @@ const Navbar = ({ user, role }) => {
                   Tra cứu tình trạng thủ tục
                 </Link>
               </>        
-             )}
+             ) : null}
           </div>
 
           {/* Right Side */}

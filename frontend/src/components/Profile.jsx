@@ -238,7 +238,7 @@ const Profile = () => {
               <div className="mt-5">
                 <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
                   <div className="sm:col-span-1">
-                    <dt className="text-sm font-medium text-gray-500">Username</dt>
+                    <dt className="text-sm font-medium text-gray-500">Tên đăng nhập</dt>
                     <dd className="mt-1 text-sm text-gray-900">{user.username}</dd>
                   </div>
                   <div className="sm:col-span-1">
@@ -246,11 +246,11 @@ const Profile = () => {
                     <dd className="mt-1 text-sm text-gray-900">{user.email}</dd>
                   </div>
                   <div className="sm:col-span-1">
-                    <dt className="text-sm font-medium text-gray-500">First Name</dt>
+                    <dt className="text-sm font-medium text-gray-500">Tên</dt>
                     <dd className="mt-1 text-sm text-gray-900">{user.firstName}</dd>
                   </div>
                   <div className="sm:col-span-1">
-                    <dt className="text-sm font-medium text-gray-500">Last Name</dt>
+                    <dt className="text-sm font-medium text-gray-500">Họ</dt>
                     <dd className="mt-1 text-sm text-gray-900">{user.lastName}</dd>
                   </div>
                 </dl>
@@ -280,7 +280,7 @@ const Profile = () => {
         <div className="bg-white shadow sm:rounded-lg mt-6">
           <div className="px-4 py-5 sm:p-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Personal Information
+              Thông tin cá nhân
             </h3>
             
             {citizenError && (
@@ -291,7 +291,7 @@ const Profile = () => {
             
             {citizenLoading ? (
               <div className="mt-4 text-center py-4">
-                <p className="text-gray-500">Loading personal information...</p>
+                <p className="text-gray-500">Đang tải thông tin cá nhân...</p>
               </div>
             ) : (
               <div className="mt-5">

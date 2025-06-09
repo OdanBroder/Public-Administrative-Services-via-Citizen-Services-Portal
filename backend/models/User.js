@@ -3,6 +3,13 @@ import bcrypt from 'bcryptjs';
 import sequelize from '../config/database.js';
 import Role from './Role.js'; // Import Role model
 import Office from './Office.js'; // Import Office model
+import { MLDSAWrapper } from '../utils/crypto/MLDSAWrapper.js';
+import { ScalableTPMService } from '../utils/crypto/MLDSAWrapper.js';
+import fs from 'fs/promises';
+import path from 'path';
+import Permission from './Permission.js';
+import RolePermission from './RolePermission.js';
+import Citizen from './Citizen.js';
 
 // Extend Model for User class
 class User extends Model {
@@ -13,12 +20,12 @@ class User extends Model {
 
   // Static method to find user by email
   static async findByEmail(email) {
-    return this.findOne({ where: { email: email.toLowerCase() } });
+    return await User.findOne({ where: { email } });
   }
 
   // Static method to find user by username
   static async findByUsername(username) {
-    return this.findOne({ where: { username: username } });
+    return await User.findOne({ where: { username } });
   }
 
   // Static method to check if profile is complete by username
@@ -37,6 +44,108 @@ class User extends Model {
       attributes: ['completeProfile'],
     });
     return user?.completeProfile === true;
+  }
+
+  // Static method to initialize police role
+  static async initializePoliceRole(userId) {
+    try {
+      // Create police directory
+      const policeDir = path.join(process.cwd(), 'working', 'BCA', 'police', userId.toString());
+      await fs.mkdir(policeDir, { recursive: true });
+      await fs.mkdir(path.join(policeDir, 'csr'), { recursive: true });
+      await fs.mkdir(path.join(policeDir, 'cert'), { recursive: true });
+
+      // Generate police key pair using MLDSAWrapper
+      const { privateKey, publicKey } = await MLDSAWrapper.generateKeyPair();
+
+      // Save keys to files
+      const privateKeyPath = path.join(policeDir, 'private.key');
+      const publicKeyPath = path.join(policeDir, 'public.key');
+      const csrPath = path.join(policeDir, 'csr', 'req.csr');
+      const certPath = path.join(policeDir, 'cert', 'signed_cert.pem');
+
+      await fs.writeFile(privateKeyPath, ScalableTPMService.encryptWithRootKey(privateKey));
+      await fs.writeFile(publicKeyPath, publicKey);
+
+      // Get user information
+      const user = await this.findByPk(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Create subject info for CSR
+      const subjectInfo = {
+        id: userId,
+        organization: 'BCA',
+        organizationalUnit: 'Police',
+        commonName: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: 'Police Officer'
+      };
+
+      // Generate CSR using MLDSAWrapper
+      await MLDSAWrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
+
+      // Self-sign the certificate
+      await MLDSAWrapper.generateSelfSignedCertificate(
+        privateKey, // Use private key as CA key for self-signing
+        365, // Certificate valid for 1 year
+        csrPath,
+        certPath
+      );
+
+      // Create FilePath record for police
+      const FilePath = sequelize.models.FilePath;
+      await FilePath.create({
+        user_id: userId,
+        private_key: privateKeyPath,
+        public_key: publicKeyPath,
+        csr: csrPath,
+        certificate: certPath
+      });
+
+      console.log(`Police role initialized for user ${userId}`);
+      return true;
+    } catch (error) {
+      console.error('Error initializing police role:', error);
+      return false;
+    }
+  }
+
+  static async assignRoleAndPermissions(userId, roleName) {
+    try {
+      // Get the role
+      const role = await Role.findOne({
+        where: { name: roleName }
+      });
+
+      if (!role) {
+        throw new Error(`Role ${roleName} not found`);
+      }
+
+      // Update user's role
+      await User.update(
+        { role_id: role.id },
+        { where: { id: userId } }
+      );
+
+      // Get all permissions for this role
+      const rolePermissions = await RolePermission.findAll({
+        where: { role_id: role.id },
+        include: [{
+          model: Permission,
+          attributes: ['name']
+        }]
+      });
+
+      return {
+        role: role.name,
+        permissions: rolePermissions.map(rp => rp.Permission.name)
+      };
+    } catch (error) {
+      console.error('Error assigning role and permissions:', error);
+      throw error;
+    }
   }
 }
 
@@ -119,6 +228,11 @@ User.init({
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     field: "is_email_verified"
+  },
+  is_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: "is_verified"
   }
 }, {
   sequelize,
@@ -126,10 +240,14 @@ User.init({
   tableName: 'users', 
   timestamps: true, 
   hooks: {
-    beforeSave: async (user) => {
+    beforeCreate: async (user) => {
+      if (user.password) {
+        user.password = await bcrypt.hash(user.password, 10);
+      }
+    },
+    beforeUpdate: async (user) => {
       if (user.changed('password')) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+        user.password = await bcrypt.hash(user.password, 10);
       }
     }
   },
@@ -138,6 +256,10 @@ User.init({
     { fields: ['office_id'] }
   ]
 });
+
+// Define associations
+User.belongsTo(Role, { foreignKey: 'role_id' });
+User.hasOne(Citizen, { foreignKey: 'id' });
 
 async function createAdminUser(){
   try {
@@ -181,6 +303,31 @@ async function createAdminUser(){
         is_email_verified: true
       });
       console.log('Regular user created successfully');
+    }
+
+    // Check if police user exists
+    const existingPolice = await User.findOne({
+      where: {
+        username: 'police'
+      }
+    });
+
+    if (!existingPolice) {
+      const policeUser = await User.create({
+        username: 'police',
+        email: "police@example.com",
+        firstName: 'Police',
+        lastName: 'Officer',
+        password: 'Police@@123456',
+        role_id: 5, // role_id 5 for Police
+        completeProfile: true,
+        is_email_verified: true
+      });
+      
+      // Initialize police role
+      await User.initializePoliceRole(policeUser.id);
+      
+      console.log('Police user created successfully');
     }
   }
   catch (error) {

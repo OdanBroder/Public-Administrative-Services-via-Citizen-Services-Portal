@@ -211,7 +211,7 @@ const Register = () => {
               to="/login"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              Already have an account? Sign in
+              Đã có tài khoản? Đăng nhập
             </Link>
           </div>
         </form>

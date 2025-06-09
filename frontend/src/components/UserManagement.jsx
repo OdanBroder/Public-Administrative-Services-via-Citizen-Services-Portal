@@ -168,8 +168,8 @@ const AdminConsole = () => {
     <div className="container mx-auto px-4 py-8">
       {/* Header Section */}
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-amber-700">Admin Console - User Management</h1>
-        <p className="text-lg text-gray-600">Manage user roles and permissions</p>
+        <h1 className="text-3xl font-bold text-amber-700">Bảng điều khiển Admin - Quản lý người dùng</h1>
+        <p className="text-lg text-gray-600">Quản lý vai trò và quyền người dùng</p>
       </header>
       
       {/* Main Content */}
@@ -179,7 +179,7 @@ const AdminConsole = () => {
           <div className="flex-grow">
             <input 
               type="text" 
-              placeholder="Search users by name..." 
+              placeholder="Tìm kiếm người dùng theo tên..." 
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
               value={searchTerm}
               onChange={handleSearchChange}
@@ -191,11 +191,11 @@ const AdminConsole = () => {
               value={roleFilter}
               onChange={handleRoleFilterChange}
             >
-              <option value="">All Roles</option>
-              <option value="Admin">Admin</option>
-              <option value="Citizen">Citizen</option>
-              <option value="Staff">Staff</option>
-              <option value="Head">Head</option>
+              <option value="">Tất cả vai trò</option>
+              <option value="Admin">Quản trị viên</option>
+              <option value="Citizen">Công dân</option>
+              <option value="Staff">Nhân viên</option>
+              <option value="Head">Trưởng phòng</option>
             </select>
           </div>
         </div>
@@ -292,7 +292,7 @@ const AdminConsole = () => {
           <div className="mt-4 flex justify-between items-center">
             <div>
               <span className="text-sm text-gray-600">
-                {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
+                {filteredUsers.length} người dùng
               </span>
             </div>
             <div className="flex space-x-2">
@@ -301,14 +301,14 @@ const AdminConsole = () => {
                 onClick={() => setCurrentPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
-                Previous
+                Trước
               </button>
               <button 
                 className="px-3 py-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-50"
                 onClick={() => setCurrentPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
               >
-                Next
+                Tiếp
               </button>
             </div>
           </div>

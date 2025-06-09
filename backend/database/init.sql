@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
+    is_verified BOOLEAN DEFAULT false,
     is_email_verified TINYINT(1) NOT NULL DEFAULT 0,
     is_qr_enabled TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -92,17 +93,26 @@ CREATE TABLE IF NOT EXISTS applications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
     service_id INT UNSIGNED NOT NULL,
+    application_data JSON,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    processed_by INT UNSIGNED NULL,
+    processed_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+    FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_user_id (user_id),
+    INDEX idx_service_id (service_id),
+    INDEX idx_status (status),
+    INDEX idx_processed_by (processed_by)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- 8. Medical Coverage Table
+-- 8. Bảo hiểm Y tế Table
 CREATE TABLE IF NOT EXISTS medical_coverage (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
+    service_id INT UNSIGNED NOT NULL,
     card_number VARCHAR(255) NOT NULL,
     coverage_type ENUM('BASIC', 'STANDARD', 'PREMIUM') NOT NULL,
     start_date DATE NOT NULL,
@@ -112,21 +122,27 @@ CREATE TABLE IF NOT EXISTS medical_coverage (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
+    INDEX idx_service_id (service_id),
     INDEX idx_status (status)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- 9. Service Health Table
 CREATE TABLE IF NOT EXISTS service_health (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    service_name VARCHAR(255) NOT NULL,
+    service_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
     status ENUM('UP', 'DOWN', 'DEGRADED') NOT NULL,
     response_time INT NOT NULL,
     last_checked TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     uptime DECIMAL(5, 2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY idx_service_name (service_name),
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_service_id (service_id),
+    INDEX idx_user_id (user_id),
     INDEX idx_status (status),
     INDEX idx_last_checked (last_checked)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
@@ -220,3 +236,86 @@ CREATE EVENT cleanup_jwt_blacklist
 ON SCHEDULE EVERY 1 DAY
 DO
   DELETE FROM jwt_blacklist WHERE expires_at < NOW();
+
+-- 16. For save path of file
+CREATE TABLE IF NOT EXISTS file_path (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,    
+    private_key VARCHAR(100) DEFAULT NULL,
+    public_key VARCHAR(100) DEFAULT NULL,
+    csr VARCHAR(100) DEFAULT NULL,
+    certificate VARCHAR(100) DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_file_path (id)
+);
+
+-- 17. Birth Registrations Table
+CREATE TABLE IF NOT EXISTS BirthRegistrations (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    applicantId INT UNSIGNED,
+    applicant_name VARCHAR(255) NOT NULL,
+    applicant_dob DATE NOT NULL,
+    applicant_phone VARCHAR(20) NOT NULL,
+    applicant_cccd VARCHAR(20) NOT NULL,
+    applicant_cccd_issue_date DATE NOT NULL,
+    applicant_cccd_issue_place VARCHAR(255) NOT NULL,
+    applicant_address VARCHAR(255) NOT NULL,
+    
+    registrant_name VARCHAR(255) NOT NULL,
+    registrant_gender VARCHAR(10) NOT NULL,
+    registrant_ethnicity VARCHAR(50) NOT NULL,
+    registrant_nationality VARCHAR(50) NOT NULL,
+    registrant_dob DATE NOT NULL,
+    registrant_dob_in_words VARCHAR(255) NOT NULL,
+    registrant_birth_place VARCHAR(255) NOT NULL,
+    registrant_province VARCHAR(100) NOT NULL,
+    registrant_hometown VARCHAR(100) NOT NULL,
+    
+    father_name VARCHAR(255) NOT NULL,
+    father_dob DATE NOT NULL,
+    father_ethnicity VARCHAR(50) NOT NULL,
+    father_nationality VARCHAR(50) NOT NULL,
+    father_residence_type VARCHAR(50) NOT NULL DEFAULT 'thường trú',
+    father_address VARCHAR(255) NOT NULL,
+    
+    mother_name VARCHAR(255) NOT NULL,
+    mother_dob DATE NOT NULL,
+    mother_ethnicity VARCHAR(50) NOT NULL,
+    mother_nationality VARCHAR(50) NOT NULL,
+    mother_residence_type VARCHAR(50) NOT NULL DEFAULT 'thường trú',
+    mother_address VARCHAR(255) NOT NULL,
+    
+    status ENUM('chờ duyệt', 'chờ ký', 'thành công', 'từ chối') NOT NULL DEFAULT 'chờ duyệt',
+    file_path VARCHAR(100) DEFAULT NULL,
+    service_id INT UNSIGNED NOT NULL DEFAULT 1,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (applicantId) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+    
+    INDEX idx_applicant_id (applicantId),
+    INDEX idx_status (status),
+    INDEX idx_service_id (service_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- 18. Citizens Table
+CREATE TABLE IF NOT EXISTS citizens (
+    id INT UNSIGNED NOT NULL,
+    ho_va_ten VARCHAR(255) NOT NULL,
+    so_cccd VARCHAR(20) NOT NULL UNIQUE,
+    hinh_anh_cccd_truoc VARCHAR(255) NOT NULL,
+    hinh_anh_cccd_sau VARCHAR(255) NOT NULL,
+    noi_cap_cccd VARCHAR(255) NOT NULL,
+    ngay_cap_cccd DATE NOT NULL,
+    ngay_sinh DATE NOT NULL,
+    gioi_tinh VARCHAR(10) NOT NULL,
+    que_quan VARCHAR(255) NOT NULL,
+    noi_thuong_tru VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_so_cccd (so_cccd)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
