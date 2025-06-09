@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate, verifyAdmin } from '../middleware/authMiddleware.js';
+import { authenticate, verifyRole, ROLES } from '../middleware/authMiddleware.js';
 import {
   // User Management
   listUsers,
@@ -43,7 +43,7 @@ const router = express.Router();
 
 // Apply authentication and admin verification middleware to all routes
 router.use(authenticate);
-router.use(verifyAdmin);
+router.use(verifyRole(ROLES.ADMIN));
 
 // User Management Routes
 router.get('/users', listUsers);

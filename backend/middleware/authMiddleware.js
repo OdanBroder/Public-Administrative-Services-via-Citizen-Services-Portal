@@ -2,7 +2,31 @@ import jwt from 'jsonwebtoken';
 import config from '../config/config.js';
 import BlacklistedToken from '../models/BlacklistedToken.js';
 import { User, Role, Office, Permission } from '../models/Association.js';
-import { Model } from 'sequelize';
+
+// Core token verification function
+const verifyToken = async (token) => {
+  try {
+    // Check if token is blacklisted
+    const blacklisted = await BlacklistedToken.findOne({ 
+      where: { token: token } 
+    });
+    
+    if (blacklisted) {
+      throw new Error('Token không hợp lệ (đã bị chặn)');
+    }
+
+    const decoded = jwt.verify(token, config.jwt.secret);
+    return decoded;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Token đã hết hạn');
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Token không hợp lệ');
+    }
+    throw error;
+  }
+};
 
 // Main authentication middleware
 const authenticate = async (req, res, next) => {
@@ -18,20 +42,8 @@ const authenticate = async (req, res, next) => {
 
     const token = authHeader.replace('Bearer ', '');
     
-    // Check if token is blacklisted
-    const blacklisted = await BlacklistedToken.findOne({ 
-      where: { token: token } 
-    });
-    
-    if (blacklisted) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Token không hợp lệ (đã bị chặn)' 
-      });
-    }
-
     try {
-      const decoded = jwt.verify(token, config.jwt.secret);
+      const decoded = await verifyToken(token);
       
       // Find user with role and permissions
       const user = await User.findOne({
@@ -64,19 +76,9 @@ const authenticate = async (req, res, next) => {
       req.token = token;
       next();
     } catch (error) {
-      if(error instanceof jwt.TokenExpiredError)
-        return res.status(401).json({ 
-          success: false,
-          message: 'Token đã hết hạn' 
-        });
-      if(error instanceof jwt.JsonWebTokenError)
-        return res.status(401).json({ 
-          success: false,
-          message: 'Token không hợp lệ' 
-        });
       return res.status(401).json({ 
         success: false,
-        message: 'Xác thực thất bại' 
+        message: error.message 
       });
     }
   } catch (error) {
@@ -122,81 +124,9 @@ const verifyRole = (allowedRoles) => {
   };
 };
 
-// Token verification middleware
-const verifyToken = async (token) => {
-  try {
-    // Check if token is blacklisted
-    const blacklisted = await BlacklistedToken.findOne({ 
-      where: { token: token } 
-    });
-    
-    if (blacklisted) {
-      throw new Error('Token không hợp lệ (đã bị chặn)');
-    }
-
-    const decoded = jwt.verify(token, config.jwt.secret);
-    return decoded;
-  } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
-      throw new Error('Token đã hết hạn');
-    }
-    if (error instanceof jwt.JsonWebTokenError) {
-      throw new Error('Token không hợp lệ');
-    }
-    throw error;
-  }
-};
-
-// Specific role middleware
-const verifyAdmin = verifyRole('Admin');
-const verifyBCA = verifyRole('BCA');
-const verifySYT = verifyRole('SYT');
-const verifyPolice = verifyRole('Police');
-const verifyCitizen = verifyRole('Citizen');
-
-// Permission checking middleware
-const checkPermission = (requiredPermission) => {
-  return async (req, res, next) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ 
-          success: false,
-          message: 'Yêu cầu xác thực' 
-        });
-      }
-
-      const permissions = Array.isArray(requiredPermission) 
-        ? requiredPermission 
-        : [requiredPermission];
-
-      const hasPermission = permissions.some(permission => 
-        req.user.permissions.includes(permission)
-      );
-
-      if (!hasPermission) {
-        return res.status(403).json({ 
-          success: false,
-          message: 'Không có quyền thực hiện hành động này',
-          required: permissions,
-          current: req.user.permissions
-        });
-      }
-
-      next();
-    } catch (error) {
-      console.error('Permission check error:', error);
-      return res.status(500).json({ 
-        success: false,
-        message: 'Lỗi khi kiểm tra quyền',
-        error: error.message 
-      });
-    }
-  };
-};
-
-// Advanced authorization middleware with office scope
+// Comprehensive authorization middleware with permission and office scope checking
 const authorize = (requiredPermission, options = {}) => {
-  const { checkOfficeScope = false, targetOfficeName } = options;
+  const { checkOfficeScope = false, targetOfficeName, requiredRoles = null } = options;
 
   return async (req, res, next) => {
     try {
@@ -205,6 +135,17 @@ const authorize = (requiredPermission, options = {}) => {
           success: false,
           message: 'Yêu cầu xác thực' 
         });
+      }
+
+      // Check role if specified
+      if (requiredRoles) {
+        const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+        if (!roles.includes(req.user.role)) {
+          return res.status(403).json({
+            success: false,
+            message: `Không có quyền truy cập. Chỉ ${roles.join(', ')} mới có thể truy cập tính năng này.`
+          });
+        }
       }
 
       // Find user with role, permissions and office
@@ -234,19 +175,23 @@ const authorize = (requiredPermission, options = {}) => {
         });
       }
 
-      // Check permissions
-      const permissions = Array.isArray(requiredPermission) 
-        ? requiredPermission 
-        : [requiredPermission];
+      // Check permissions if specified
+      if (requiredPermission) {
+        const permissions = Array.isArray(requiredPermission) 
+          ? requiredPermission 
+          : [requiredPermission];
 
-      const userPermissions = user.role.permissions.map(p => p.name);
-      const hasPermission = permissions.some(p => userPermissions.includes(p));
+        const userPermissions = user.role.permissions.map(p => p.name);
+        const hasPermission = permissions.some(p => userPermissions.includes(p));
 
-      if (!hasPermission) {
-        return res.status(403).json({ 
-          success: false,
-          message: 'Không có quyền thực hiện hành động này' 
-        });
+        if (!hasPermission) {
+          return res.status(403).json({ 
+            success: false,
+            message: 'Không có quyền thực hiện hành động này',
+            required: permissions,
+            current: userPermissions
+          });
+        }
       }
 
       // Check office scope if required
@@ -282,15 +227,19 @@ const authorize = (requiredPermission, options = {}) => {
   };
 };
 
+// Role constants for convenience
+const ROLES = {
+  ADMIN: 'Admin',
+  BCA: 'BCA',
+  SYT: 'SYT',
+  POLICE: 'Police',
+  CITIZEN: 'Citizen'
+};
+
 export {
   authenticate,
+  verifyToken,
   verifyRole,
-  verifyAdmin,
-  verifyBCA,
-  verifySYT,
-  verifyPolice,
-  verifyCitizen,
-  checkPermission,
   authorize,
-  verifyToken
+  ROLES
 };

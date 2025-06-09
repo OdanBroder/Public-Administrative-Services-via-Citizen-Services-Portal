@@ -1,11 +1,26 @@
-import { authenticate } from '../middleware/authMiddleware.js';
+import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
 import { upload } from '../config/multerConfig.js';
 import express from 'express';
 import { createCitizen, getCitizenById } from '../controllers/citizenController.js';
 
 const router = express.Router();
 
-router.post("/", authenticate, upload, createCitizen);
-router.get("/:id", authenticate, getCitizenById);
+router.post("/", 
+  authenticate, 
+  authorize("submit_request", {
+    requiredRoles: [ROLES.CITIZEN, ROLES.ADMIN]
+  }),
+  upload, 
+  createCitizen
+);
+
+router.get("/:id", 
+  authenticate,
+  authorize(["view_own_request", "manage_users"], {
+    // Staff roles can view any citizen data
+    requiredRoles: [ROLES.CITIZEN, ROLES.ADMIN, ROLES.BCA, ROLES.SYT, ROLES.POLICE]
+  }),
+  getCitizenById
+);
 
 export default router;

@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyToken, verifyBCA } from '../middleware/authMiddleware.js';
+import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
 import {
   getPendingApplications,
   getApplicationById,
@@ -10,15 +10,47 @@ import {
 const router = express.Router();
 
 // Get all pending birth registration applications
-router.get('/applications/pending', verifyToken, verifyBCA, getPendingApplications);
+router.get('/applications/pending', 
+  authenticate, 
+  authorize('view_bca_applications', { 
+    requiredRoles: ROLES.BCA,
+    checkOfficeScope: true,
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  getPendingApplications
+);
 
 // Get a specific birth registration application
-router.get('/applications/:applicationId', verifyToken, verifyBCA, getApplicationById);
+router.get('/applications/:applicationId', 
+  authenticate, 
+  authorize('view_bca_applications', { 
+    requiredRoles: ROLES.BCA,
+    checkOfficeScope: true,
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  getApplicationById
+);
 
 // Approve a birth registration application
-router.post('/applications/:applicationId/approve', verifyToken, verifyBCA, approveApplication);
+router.post('/applications/:applicationId/approve', 
+  authenticate, 
+  authorize('process_bca_applications', { 
+    requiredRoles: ROLES.BCA,
+    checkOfficeScope: true,
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  approveApplication
+);
 
 // Reject a birth registration application
-router.post('/applications/:applicationId/reject', verifyToken, verifyBCA, rejectApplication);
+router.post('/applications/:applicationId/reject', 
+  authenticate, 
+  authorize('process_bca_applications', { 
+    requiredRoles: ROLES.BCA,
+    checkOfficeScope: true,
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  rejectApplication
+);
 
-export default router; 
+export default router;
