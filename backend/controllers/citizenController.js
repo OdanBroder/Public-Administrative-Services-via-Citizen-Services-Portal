@@ -31,9 +31,9 @@ export const createCitizen = async (req, res) => {
       !queQuan ||
       !noiThuongTru
     ) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Vui lòng điền đầy đủ thông tin" 
+        message: "Vui lòng điền đầy đủ thông tin"
       });
     }
 
@@ -41,9 +41,9 @@ export const createCitizen = async (req, res) => {
 
     const user = await User.findByPk(id);
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng" 
+        message: "Không tìm thấy người dùng"
       });
     }
 
@@ -53,7 +53,7 @@ export const createCitizen = async (req, res) => {
     });
 
     if (existingCitizen) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         message: "Bạn đã đăng ký thông tin, vui lòng liên hệ cơ quan chức năng để cập nhật"
       });
@@ -61,68 +61,126 @@ export const createCitizen = async (req, res) => {
 
     // Create user directory if it doesn't exist
     const userDir = path.join(process.cwd(), 'working', 'user', id.toString());
-    await fs.mkdir(userDir, { recursive: true });
-    await fs.mkdir(path.join(userDir, 'csr'), { recursive: true });
+    const certDir = path.join(userDir, 'cert');
+    const applicationDir = path.join(userDir, 'application');
 
-    // Generate key pair and CSR using MLDSAWrapper
-    const { privateKey, publicKey } = await MLDSAWrapper.generateKeyPair();
-    const csrPath = path.join(userDir, 'csr', 'req.csr');
+    try {
+      // Create directories
+      await fs.mkdir(userDir, { recursive: true });
+      await fs.mkdir(certDir, { recursive: true });
+      await fs.mkdir(applicationDir, { recursive: true });
 
-    const subjectInfo = {
-      id: req.user.userId,
-      hoVaTen,
-      ngaySinh,
-      gioiTinh,
-      queQuan,
-      noiThuongTru,
-    };
+      // Generate key pair and CSR using MLDSAWrapper
+      const { privateKey, publicKey } = await MLDSAWrapper.generateKeyPair();
+      const csrPath = path.join(certDir, 'req.csr');
+      const privateKeyPath = path.join(certDir, 'private.key');
+      const publicKeyPath = path.join(certDir, 'public.key');
 
-    await MLDSAWrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
+      const subjectInfo = {
+        id: req.user.userId,
+        hoVaTen,
+        ngaySinh,
+        gioiTinh,
+        queQuan,
+        noiThuongTru,
+      };
 
-    // Save file paths to database
-    const filePath = await FilePath.create({
-      id: undefined,
-      user_id: id,
-      private_key: path.join(userDir, 'private.key'),
-      public_key: path.join(userDir, 'public.key'),
-      csr: csrPath,
-      certificate: certPath
-    });
+      // Generate CSR
+      const csrGenerated = await MLDSAWrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
+      if (!csrGenerated) {
+        throw new Error('Failed to generate CSR');
+      }
 
-    // Save private and public keys to files
-    await fs.writeFile(filePath.private_key, ScalableTPMService.encryptWithRootKey(privateKey));
-    await fs.writeFile(filePath.public_key, publicKey);
+      // Save file paths to database
+      const filePath = await FilePath.create({
+        user_id: id,
+        private_key: privateKeyPath,
+        public_key: publicKeyPath,
+        csr: csrPath,
+        certificate: null, // Will be updated when certificate is signed
+        application: applicationDir // Set base application directory
+      });
 
-    const newCitizen = await Citizen.create({
-      id: req.user.userId,
-      hoVaTen,
-      soCCCD,
-      hinhAnhCCCDTruoc: req.files.hinhAnhCCCDTruoc[0].path,
-      hinhAnhCCCDSau: req.files.hinhAnhCCCDSau[0].path,
-      noiCapCCCD,
-      ngayCapCCCD,
-      ngaySinh,
-      gioiTinh,
-      queQuan,
-      noiThuongTru,
-    });
+      if (!filePath) {
+        throw new Error('Failed to save file paths to database');
+      }
 
-    user.completeProfile = true;
-    await user.save();
+      // Save private and public keys to files
+      await fs.writeFile(privateKeyPath, ScalableTPMService.encryptWithRootKey(privateKey));
+      await fs.writeFile(publicKeyPath, publicKey);
 
-    res.status(201).json({
-      success: true,
-      message: "Đăng ký thông tin công dân thành công",
-      citizen: newCitizen,
-      frontImagePath: `/uploads/${req.files.hinhAnhCCCDTruoc[0].filename}`,
-      backImagePath: `/uploads/${req.files.hinhAnhCCCDSau[0].filename}`
-    });
+      // Verify files were created successfully
+      const filesExist = await Promise.all([
+        fs.access(privateKeyPath).then(() => true).catch(() => false),
+        fs.access(publicKeyPath).then(() => true).catch(() => false),
+        fs.access(csrPath).then(() => true).catch(() => false)
+      ]);
+
+      if (filesExist.some(exists => !exists)) {
+        throw new Error('Failed to create one or more key files');
+      }
+
+      const newCitizen = await Citizen.create({
+        id: req.user.userId,
+        hoVaTen,
+        soCCCD,
+        hinhAnhCCCDTruoc: req.files.hinhAnhCCCDTruoc[0].path,
+        hinhAnhCCCDSau: req.files.hinhAnhCCCDSau[0].path,
+        noiCapCCCD,
+        ngayCapCCCD,
+        ngaySinh,
+        gioiTinh,
+        queQuan,
+        noiThuongTru,
+      });
+
+      if (!newCitizen) {
+        throw new Error('Failed to create citizen record');
+      }
+
+      user.completeProfile = true;
+      await user.save();
+
+      res.status(201).json({
+        success: true,
+        message: "Đăng ký thông tin công dân thành công",
+        citizen: newCitizen,
+        frontImagePath: `/uploads/${req.files.hinhAnhCCCDTruoc[0].filename}`,
+        backImagePath: `/uploads/${req.files.hinhAnhCCCDSau[0].filename}`
+      });
+    } catch (error) {
+      // Cleanup on failure
+      try {
+        await fs.rm(userDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.error('Error cleaning up user directory:', cleanupError);
+      }
+
+      // Delete any created database records
+      try {
+        await FilePath.destroy({ where: { user_id: id } });
+        await Citizen.destroy({ where: { id: id } });
+        if (user.completeProfile) {
+          user.completeProfile = false;
+          await user.save();
+        }
+      } catch (dbCleanupError) {
+        console.error('Error cleaning up database records:', dbCleanupError);
+      }
+
+      console.error("Error creating citizen:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Lỗi khi đăng ký thông tin công dân", 
+        error: error.message 
+      });
+    }
   } catch (error) {
     console.error("Database error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Lỗi máy chủ", 
-      error: error.message 
+      message: "Lỗi máy chủ",
+      error: error.message
     });
   }
 };

@@ -3,6 +3,7 @@ import FilePath from '../models/FilePath.js';
 import { MLDSAWrapper } from '../utils/MLDSAWrapper.js';
 import path from 'path';
 import fs from 'fs/promises';
+import ScalableTPMService from '../utils/crypto/ScalableTPMService.js';
 
 export const getUnverifiedUsers = async (req, res) => {
   try {
@@ -14,7 +15,7 @@ export const getUnverifiedUsers = async (req, res) => {
       attributes: ['id', 'username', 'email', 'first_name', 'last_name'],
       include: [{
         model: FilePath,
-        attributes: ['csr', 'public_key'],
+        attributes: ['csr', 'public_key', 'certificate'],
         required: true
       }]
     });
@@ -22,6 +23,26 @@ export const getUnverifiedUsers = async (req, res) => {
     // Read the CSR and public key files for each user
     const usersWithKeys = await Promise.all(unverifiedUsers.map(async (user) => {
       try {
+        // Skip users who already have certificates
+        if (user.FilePath.certificate) {
+          return {
+            ...user.toJSON(),
+            csr_content: null,
+            public_key_content: null,
+            error: 'Người dùng đã có chứng chỉ'
+          };
+        }
+
+        // Verify files exist before reading
+        const filesExist = await Promise.all([
+          fs.access(user.FilePath.csr).then(() => true).catch(() => false),
+          fs.access(user.FilePath.public_key).then(() => true).catch(() => false)
+        ]);
+
+        if (filesExist.some(exists => !exists)) {
+          throw new Error('Một hoặc nhiều file khóa không tồn tại');
+        }
+
         const csrContent = await fs.readFile(user.FilePath.csr, 'utf8');
         const publicKeyContent = await fs.readFile(user.FilePath.public_key, 'utf8');
         
@@ -31,22 +52,26 @@ export const getUnverifiedUsers = async (req, res) => {
           public_key_content: publicKeyContent
         };
       } catch (error) {
-        console.error(`Error reading files for user ${user.id}:`, error);
+        console.error(`Lỗi đọc file cho người dùng ${user.id}:`, error);
         return {
           ...user.toJSON(),
           csr_content: null,
-          public_key_content: null
+          public_key_content: null,
+          error: error.message
         };
       }
     }));
 
+    // Filter out users who already have certificates
+    const pendingUsers = usersWithKeys.filter(user => !user.FilePath.certificate);
+
     return res.status(200).json({
       success: true,
       message: "Lấy danh sách người dùng chưa xác thực thành công",
-      data: usersWithKeys
+      data: pendingUsers
     });
   } catch (error) {
-    console.error("Error fetching unverified users:", error);
+    console.error("Lỗi khi lấy danh sách người dùng chưa xác thực:", error);
     return res.status(500).json({
       success: false,
       message: "Lỗi máy chủ",
@@ -92,6 +117,32 @@ export const signUserCertificate = async (req, res) => {
         message: "Không tìm thấy thông tin chứng chỉ của người dùng"
       });
     }
+
+    // Check if user already has a certificate
+    if (userFilePath.certificate) {
+      return res.status(400).json({
+        success: false,
+        message: "Người dùng đã có chứng chỉ"
+      });
+    }
+
+    // Verify all required files exist
+    const requiredFiles = [
+      policeFilePath.private_key,
+      policeFilePath.certificate,
+      userFilePath.csr
+    ];
+
+    const filesExist = await Promise.all(
+      requiredFiles.map(file => fs.access(file).then(() => true).catch(() => false))
+    );
+
+    if (filesExist.some(exists => !exists)) {
+      return res.status(400).json({
+        success: false,
+        message: "Một hoặc nhiều file cần thiết không tồn tại"
+      });
+    }
     
     // Read police's private key and certificate
     const policePrivateKey = ScalableTPMService.decryptWithRootKey(
@@ -99,21 +150,31 @@ export const signUserCertificate = async (req, res) => {
     );
     const policeCertificate = await fs.readFile(policeFilePath.certificate, 'utf8');
 
-    // Create certificate directory for user if it doesn't exist
-    const userCertDir = path.join(process.cwd(), 'working', 'user', userId.toString(), 'cert');
+    // Get user's cert directory from FilePath
+    const userCertDir = path.dirname(userFilePath.private_key);
     await fs.mkdir(userCertDir, { recursive: true });
 
     // Define paths for user's certificate
     const userCertPath = path.join(userCertDir, 'signed_cert.pem');
 
     // Sign the user's CSR using police's private key and certificate
-    await MLDSAWrapper.signCertificate(
+    const signed = await MLDSAWrapper.signCertificate(
       policePrivateKey,  // Police's private key as CA key
       365,               // Certificate valid for 1 year
       userFilePath.csr,  // User's CSR path
       policeCertificate, // Police's certificate as CA cert
       userCertPath       // Path to save signed certificate
     );
+
+    if (!signed) {
+      throw new Error('Không thể ký chứng chỉ');
+    }
+
+    // Verify the signed certificate exists
+    const certExists = await fs.access(userCertPath).then(() => true).catch(() => false);
+    if (!certExists) {
+      throw new Error('Chứng chỉ không được tạo thành công');
+    }
 
     // Update user's file path in database
     await userFilePath.update({
@@ -134,7 +195,7 @@ export const signUserCertificate = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error signing certificate:", error);
+    console.error("Lỗi khi ký chứng chỉ:", error);
     return res.status(500).json({
       success: false,
       message: "Lỗi máy chủ",

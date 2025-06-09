@@ -22,22 +22,32 @@ FilePath.init({
     private_key: {
         type: DataTypes.STRING(100),
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        comment: '/working/user/user_id/cert/private.key (encrypted)'
     },
     public_key: {
         type: DataTypes.STRING(100),
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        comment: '/working/user/user_id/cert/public.key'
     },
     csr: {
         type: DataTypes.STRING(100),
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        comment: '/working/user/user_id/cert/req.csr'
     },
     certificate: {
         type: DataTypes.STRING(100),
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        comment: '/working/user/user_id/cert/signed_cert.pem'
+    },
+    application: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        defaultValue: null,
+        comment: '/working/user/user_id/application/application_id'
     }
 }, {
     sequelize,

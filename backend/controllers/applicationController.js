@@ -221,62 +221,95 @@ export const createApplication = async (req, res) => {
         await fs.readFile(userFilePath.private_key, 'utf8')
       );
 
-      // Create directory structure for user's application files
-      const userDir = path.join(process.cwd(), 'working', 'user', req.user.id.toString());
-      const applicationDir = path.join(userDir, 'applications', application.id.toString());
+      // Get base application directory from FilePath
+      const applicationDir = path.join(userFilePath.application, application.id.toString());
       const sigDir = path.join(applicationDir, 'sig');
       const messageDir = path.join(applicationDir, 'message');
 
-      // Create directories
-      await fs.mkdir(sigDir, { recursive: true });
-      await fs.mkdir(messageDir, { recursive: true });
+      try {
+        // Create directories
+        await fs.mkdir(sigDir, { recursive: true });
+        await fs.mkdir(messageDir, { recursive: true });
 
-      // Define file paths
-      const sigPath = path.join(sigDir, 'signature.bin');
-      const messagePath = path.join(messageDir, 'message.txt');
-      const metadataPath = path.join(applicationDir, 'metadata.json');
+        // Define file paths
+        const sigPath = path.join(sigDir, 'signature.bin');
+        const messagePath = path.join(messageDir, 'message.txt');
+        const metadataPath = path.join(applicationDir, 'metadata.json');
 
-      // Sign the message
-      const signature = await MLDSAWrapper._sign_mldsa65(
-        privateKeyContent,
-        message,
-        sigPath
-      );
+        // Sign the message
+        const signature = await MLDSAWrapper._sign_mldsa65(
+          privateKeyContent,
+          message,
+          sigPath
+        );
 
-      if (!signature) {
-        throw new Error('Failed to create signature');
+        if (!signature) {
+          throw new Error('Failed to create signature');
+        }
+
+        // Save message and metadata
+        await fs.writeFile(messagePath, message);
+        await fs.writeFile(metadataPath, JSON.stringify({
+          application_id: application.id,
+          service_type: service.name,
+          created_at: new Date().toISOString(),
+          signature_path: sigPath,
+          message_path: messagePath
+        }, null, 2));
+
+        // verify message with signature using certificate from FilePath
+        const userCertificate = await fs.readFile(userFilePath.certificate, 'utf8');
+        const is_verified = MLDSAWrapper.verifyWithCertificate(
+          userCertificate, 
+          signature, 
+          message, 
+          userFilePath.certificate, 
+          sigPath
+        );
+
+        if(is_verified){
+          await application.update({
+            status: 'awaiting_signature',
+            processed_by: req.user.id,
+            processed_at: new Date()
+          });
+        } else {
+          throw new Error('Verification failed');
+        }
+
+        // Fetch the created application with all details
+        const createdApplication = await Application.findByPk(application.id, {
+          include: [
+            {
+              model: User,
+              as: 'applicant',
+              attributes: ['id', 'username', 'email', 'firstName', 'lastName']
+            },
+            {
+              model: Service,
+              as: 'service',
+              attributes: ['id', 'name', 'description', 'status']
+            }
+          ]
+        });
+
+        res.status(201).json({
+          message: 'Tạo đơn đăng ký thành công',
+          application: createdApplication
+        });
+      } catch (error) {
+        // If any file operation fails, clean up the application directory
+        try {
+          await fs.rm(applicationDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          console.error('Error cleaning up application directory:', cleanupError);
+        }
+        
+        // Delete the application record
+        await application.destroy();
+        
+        throw error;
       }
-
-      // Save message and metadata
-      await fs.writeFile(messagePath, message);
-      await fs.writeFile(metadataPath, JSON.stringify({
-        application_id: application.id,
-        service_type: service.name,
-        created_at: new Date().toISOString(),
-        signature_path: sigPath,
-        message_path: messagePath
-      }, null, 2));
-
-      // Fetch the created application with all details
-      const createdApplication = await Application.findByPk(application.id, {
-        include: [
-          {
-            model: User,
-            as: 'applicant',
-            attributes: ['id', 'username', 'email', 'firstName', 'lastName']
-          },
-          {
-            model: Service,
-            as: 'service',
-            attributes: ['id', 'name', 'description', 'status']
-          }
-        ]
-      });
-
-      res.status(201).json({
-        message: 'Tạo đơn đăng ký thành công',
-        application: createdApplication
-      });
     } catch (error) {
       console.error('Error creating application:', error);
       res.status(500).json({ error: 'Lỗi khi tạo đơn đăng ký' });
