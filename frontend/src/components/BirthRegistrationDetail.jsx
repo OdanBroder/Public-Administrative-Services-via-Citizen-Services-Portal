@@ -41,37 +41,57 @@ const BirthRegistrationDetail = () => {
 
   async function handleAccept() {
     try {
+      const res = await api.get(`/bca/application/${id}/verify`); 
+      const is_verfied = res.data.success;
+      if(!is_verfied) {
+        setError("Thủ tục xác thực không thành công");
+        return;
+      }
+        // call api  signature verify:
+        // req.param = birthReg.applicationId.
       const response = await api.patch(`/birth-registration/status/${id}`, {
-        status: "chờ ký",
+        status: "awaiting_signature",
       });
       if (response.data.success) {
-        alert("Thủ tục đã được duyệt và đưa vào hàng chờ ký.");
+        setError("Thủ tục đã được duyệt và đưa vào hàng chờ ký.");
         navigate("/birth-registrations");
+
       } else {
-        alert(response.data.message || "Không thể duyệt thủ tục.");
+        setError(response.data.message || "Không thể duyệt thủ tục.");
       }
     } catch (error) {
       console.error("Error accepting registration:", error);
-      alert("Đã xảy ra lỗi khi duyệt thủ tục. Vui lòng thử lại sau.");
+      setError("Đã xảy ra lỗi khi duyệt thủ tục. Vui lòng thử lại sau.");
     }
   }
 
-  async function handleReject() {
+  const handleApprove = async () => {
     try {
-      const response = await api.patch(`/birth-registration/status/${id}`, {
-        status: "từ chối",
-      });
+      const response = await api.post(`/bca/applications/${id}/approve`);
       if (response.data.success) {
-        alert("Thủ tục đã bị từ chối.");
-        navigate("/birth-registrations");
+        navigate('/bca/applications/pending');
       } else {
-        alert(response.data.message || "Không thể từ chối thủ tục."); 
-      }  
-    } catch (error) {
-      console.error("Error accepting registration:", error);
-      alert("Đã xảy ra lỗi khi duyệt thủ tục. Vui lòng thử lại sau.");
+        setError(response.data.message || 'Không thể phê duyệt đơn đăng ký');
+      }
+    } catch (err) {
+      setError('Không thể phê duyệt đơn đăng ký');
     }
-  }
+  };
+
+  const handleReject = async () => {
+    try {
+      const response = await api.post(`/bca/applications/${id}/reject`);
+      if (response.data.success) {
+        navigate('/bca/applications/pending');
+      } else {
+        setError(response.data.message || 'Không thể từ chối đơn đăng ký');
+      }
+    } catch (err) {
+      setError('Không thể từ chối đơn đăng ký');
+    }
+  };
+
+
   const formatDate = (dateString) => {
     try {
       return new Date(dateString).toLocaleDateString("vi-VN", {
@@ -443,7 +463,7 @@ const BirthRegistrationDetail = () => {
             </dl>
           </div>
         </div>
-        { role === "Head"  || role === "Staff" && (
+        { role === "Head"  || role === "Staff" || role === "BCA" && (
         <div className="bg-white shadow overflow-hidden sm:rounded-lg flex justify-start p-4">
           <button
             type="button"
@@ -458,8 +478,17 @@ const BirthRegistrationDetail = () => {
             onClick={handleReject}
           >
             Hủy thủ tục 
-          </button>
+          </button>  
+          <button
+            type="button"
+            className="text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-full text-sm px-5 py-2.5 text-center me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
+            onClick={handleApprove}
+          >
+            Phê duyệt thủ tục.
+          </button>  
         </div>
+
+
         )}
         {/* Add hộ t button ký nếu application đã được duyệt */}
       </div>

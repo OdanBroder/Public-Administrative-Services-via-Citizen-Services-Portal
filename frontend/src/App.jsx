@@ -21,11 +21,12 @@ import UnverifiedUsersTable from './components/UnverifiedUsersTable';
 // 4 Defined roles: Admin, Citizen, Staff, Head
 const AuthorizedRoute = ({ children, required_role }) => {
   const { user, loading, role } = useAuth();
-
+  console.log("AuthorizedRoute", required_role, role);
+  debugger;
   if (loading) {
     return <div>Loading...</div>;
   }
-
+  console.log("FDSFDSFDSFDFDSFDSF");
   if (!user) {
     return <Navigate to="/login" />;
   }
@@ -115,7 +116,7 @@ const AppContent = () => {
 
           }/>
           <Route path="/view-applications" element={
-            <AuthorizedRoute required_role={["Head", "Staff"]}>
+            <AuthorizedRoute required_role={["Head", "Staff", "BCA"]}>
               <BirthRegistrationList></BirthRegistrationList>
             </AuthorizedRoute>
           } ></Route>

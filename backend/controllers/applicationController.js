@@ -101,14 +101,14 @@ export const createApplication = async (req) => {
     if (!service) {
       throw new Error('Không tìm thấy dịch vụ');
     }
-
+    console.log('Service found:', service.name, service_id);
     // Check if user has registered for this service and get service data
     let serviceRegistration;
     let serviceData = {};
     switch (service.name.toLowerCase()) {
       case 'đăng ký khai sinh':
         serviceRegistration = await BirthRegistration.findOne({
-          where: { applicantId: req.user.id, service_id },
+          where: { applicantId: req.user.userId, service_id },
           include: [{
             model: User,
             as: 'applicant',
@@ -117,36 +117,36 @@ export const createApplication = async (req) => {
         });
         if (serviceRegistration) {
           serviceData = {
-            applicant_name: serviceRegistration.applicant_name,
-            applicant_dob: serviceRegistration.applicant_dob,
-            applicant_phone: serviceRegistration.applicant_phone,
-            applicant_cccd: serviceRegistration.applicant_cccd,
-            applicant_cccd_issue_date: serviceRegistration.applicant_cccd_issue_date,
-            applicant_cccd_issue_place: serviceRegistration.applicant_cccd_issue_place,
-            applicant_address: serviceRegistration.applicant_address,
-            registrant_name: serviceRegistration.registrant_name,
-            registrant_gender: serviceRegistration.registrant_gender,
-            registrant_ethnicity: serviceRegistration.registrant_ethnicity,
-            registrant_nationality: serviceRegistration.registrant_nationality,
-            registrant_dob: serviceRegistration.registrant_dob,
-            registrant_dob_in_words: serviceRegistration.registrant_dob_in_words,
-            registrant_birth_place: serviceRegistration.registrant_birth_place,
-            registrant_province: serviceRegistration.registrant_province,
-            registrant_hometown: serviceRegistration.registrant_hometown,
-            father_name: serviceRegistration.father_name,
-            father_dob: serviceRegistration.father_dob,
-            father_ethnicity: serviceRegistration.father_ethnicity,
-            father_nationality: serviceRegistration.father_nationality,
-            father_residence_type: serviceRegistration.father_residence_type,
-            father_address: serviceRegistration.father_address,
-            mother_name: serviceRegistration.mother_name,
-            mother_dob: serviceRegistration.mother_dob,
-            mother_ethnicity: serviceRegistration.mother_ethnicity,
-            mother_nationality: serviceRegistration.mother_nationality,
-            mother_residence_type: serviceRegistration.mother_residence_type,
-            mother_address: serviceRegistration.mother_address,
+            applicant_name: serviceRegistration.applicantName,
+            applicant_dob: serviceRegistration.applicantDob,
+            applicant_phone: serviceRegistration.applicantPhone,
+            applicant_cccd: serviceRegistration.applicantCccd,
+            applicant_cccd_issue_date: serviceRegistration.applicantCccdIssueDate,
+            applicant_cccd_issue_place: serviceRegistration.applicantCccdIssuePlace,
+            applicant_address: serviceRegistration.applicantAddress,
+            registrant_name: serviceRegistration.registrantName,
+            registrant_gender: serviceRegistration.registrantGender,
+            registrant_ethnicity: serviceRegistration.registrantEthnicity,
+            registrant_nationality: serviceRegistration.registrantNationality,
+            registrant_dob: serviceRegistration.registrantDob,
+            registrant_dob_in_words: serviceRegistration.registrantDobInWords,
+            registrant_birth_place: serviceRegistration.registrantBirthPlace,
+            registrant_province: serviceRegistration.registrantProvince,
+            registrant_hometown: serviceRegistration.registrantHometown,
+            father_name: serviceRegistration.fatherName,
+            father_dob: serviceRegistration.fatherDob,
+            father_ethnicity: serviceRegistration.fatherEthnicity,
+            father_nationality: serviceRegistration.fatherNationality,
+            father_residence_type: serviceRegistration.fatherResidenceType,
+            father_address: serviceRegistration.fatherAddress,
+            mother_name: serviceRegistration.motherName,
+            mother_dob: serviceRegistration.motherDob,
+            mother_ethnicity: serviceRegistration.motherEthnicity,
+            mother_nationality: serviceRegistration.motherNationality,
+            mother_residence_type: serviceRegistration.motherResidenceType,
+            mother_address: serviceRegistration.motherAddress,
             status: serviceRegistration.status,
-            file_path: serviceRegistration.file_path
+            file_path: serviceRegistration.filePath
           };
         }
         break;

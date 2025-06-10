@@ -1,5 +1,11 @@
 import BirthRegistration from '../models/BirthRegistration.js';
 import {createApplication} from '../controllers/applicationController.js'; // Assuming you have a utility function to create applications
+import crypto from 'crypto';
+import tpmService from '../utils/crypto/tpmController.js';
+import path from 'path';
+import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
+import FilePath from '../models/FilePath.js';
+import fs from 'fs'
 // Controller to create a new birth registration
 export const createBirthRegistration = async (req, res) => {
   try {
@@ -78,8 +84,7 @@ export const createBirthRegistration = async (req, res) => {
       });
     }
 
-    // Create new birth registration
-    const birthApplication_new = await BirthRegistration.create({
+    const birthApplicationData = {
       applicantId,
       applicantName,
       applicantDob,
@@ -114,9 +119,80 @@ export const createBirthRegistration = async (req, res) => {
       motherAddress,
       
       status: "pending"
-    });
+    };
+
+    // Create new birth registration 
+    const birthApplication_new = await BirthRegistration.create(birthApplicationData);
+    delete birthApplicationData.status; // Remove id to avoid conflict in req.body
     req.body.service_id = 6;
-    await createApplication(req);
+    const message_tmp = JSON.stringify(birthApplicationData);
+    //signing logic
+    // await createApplication(req);
+    const userFilePath = await FilePath.findOne({
+      where: { user_id: req.user.id }
+    });
+
+    if (!userFilePath || !userFilePath.private_key) {
+      throw new Error('Không tìm thấy private key của người dùng. Vui lòng tạo key pair trước.');
+    }
+
+    // Create message and sign by private key
+    const message = crypto.createHash('sha512').update(message_tmp).digest('hex');
+
+    // Decrypt private key
+    const privateKeyContent = await tpmService.decryptWithRootKey(
+      await fs.promises.readFile(userFilePath.private_key, 'utf8')
+    );
+
+    // Get base application directory from FilePath
+    const applicationDir = path.join(userFilePath.application, 'birthRegistrations',birthApplication_new.id.toString());
+    const sigDir = path.join(applicationDir, 'sig');
+    const messageDir = path.join(applicationDir, 'message');
+
+    try {
+      // Create directories
+      await fs.promises.mkdir(sigDir, { recursive: true });
+      await fs.promises.mkdir(messageDir, { recursive: true });
+
+      // Define file paths
+      const sigPath = path.join(sigDir, 'signature.bin');
+      const messagePath = path.join(messageDir, 'message.txt');
+
+      // Sign the message
+      const signature = await Mldsa_wrapper.sign(
+        privateKeyContent,
+        message,
+        sigPath
+      );
+
+      if (!signature) {
+        throw new Error('Failed to create signature');
+      }
+
+      // Save message and metadata
+      await fs.promises.writeFile(messagePath, message);
+
+      // verify message with signature using certificate from FilePath
+      const is_verified = await Mldsa_wrapper.verifyWithCertificate(
+        signature, 
+        message, 
+        userFilePath.certificate, 
+        sigPath
+      );
+
+      if(is_verified){
+        await birthApplication_new.update({
+          status: 'awaiting_signature',
+          processed_by: req.user.id,
+          processed_at: new Date()
+        });
+      } else {
+        throw new Error('Verification failed');
+      }
+    }
+    finally{
+
+    }
     res.status(201).json({
       success: true,
       message: "Đăng ký khai sinh thành công",
