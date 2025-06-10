@@ -4,8 +4,8 @@ import User from '../models/User.js';
 import FilePath from '../models/FilePath.js';
 import path from 'path';
 import fs from 'fs/promises';
-import { MLDSAWrapper } from '../utils/MLDSAWrapper.js';
-import ScalableTPMService from '../utils/crypto/ScalableTPMService.js';
+import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
+import tpmController from '../utils/crypto/tpmController.js';
 
 // Get all medical coverage applications awaiting signature
 export const getPendingMedicalCoverage = async (req, res) => {
@@ -199,7 +199,7 @@ export const approveMedicalCoverage = async (req, res) => {
     }
 
     // Read SYT's private key
-    const sytPrivateKey = ScalableTPMService.decryptWithRootKey(
+    const sytPrivateKey = await tpmController.decryptWithRootKey(
       await fs.readFile(sytFilePath.private_key, 'utf8')
     );
 
@@ -216,7 +216,7 @@ export const approveMedicalCoverage = async (req, res) => {
     
     // Sign the application
     const signaturePath = path.join(signatureDir, 'syt_signature.sig');
-    const signed = await MLDSAWrapper._sign_mldsa65(
+    const signed = await Mldsa_wrapper.sign(
       sytPrivateKey,
       JSON.stringify(message),
       signaturePath
@@ -313,7 +313,7 @@ export const approveServiceHealth = async (req, res) => {
     }
 
     // Read SYT's private key
-    const sytPrivateKey = ScalableTPMService.decryptWithRootKey(
+    const sytPrivateKey = await tpmController.decryptWithRootKey(
       await fs.readFile(sytFilePath.private_key, 'utf8')
     );
 
@@ -330,7 +330,7 @@ export const approveServiceHealth = async (req, res) => {
     
     // Sign the application
     const signaturePath = path.join(signatureDir, 'syt_signature.sig');
-    const signed = await MLDSAWrapper._sign_mldsa65(
+    const signed = await Mldsa_wrapper.sign(
       sytPrivateKey,
       JSON.stringify(message),
       signaturePath

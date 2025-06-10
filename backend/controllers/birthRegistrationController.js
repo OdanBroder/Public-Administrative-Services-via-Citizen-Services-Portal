@@ -114,7 +114,7 @@ export const createBirthRegistration = async (req, res) => {
       
       status: "pending"
     });
-
+    
     res.status(201).json({
       success: true,
       message: "Đăng ký khai sinh thành công",

@@ -3,8 +3,8 @@ import User from '../models/User.js';
 import FilePath from '../models/FilePath.js';
 import path from 'path';
 import fs from 'fs/promises';
-import { MLDSAWrapper } from '../utils/MLDSAWrapper.js';
-import ScalableTPMService from '../utils/crypto/ScalableTPMService.js';
+import  Mldsa_wrapper  from '../utils/crypto/MLDSAWrapper.js';
+import tpmController from '../utils/crypto/tpmController.js';
 
 // Get all birth registration applications awaiting signature
 export const getPendingApplications = async (req, res) => {
@@ -133,7 +133,7 @@ export const approveApplication = async (req, res) => {
     }
 
     // Read BCA's private key and certificate
-    const bcaPrivateKey = ScalableTPMService.decryptWithRootKey(
+    const bcaPrivateKey = await tpmController.decryptWithRootKey(
       await fs.readFile(bcaFilePath.private_key, 'utf8')
     );
 
@@ -150,7 +150,7 @@ export const approveApplication = async (req, res) => {
     
     // Sign the application
     const signaturePath = path.join(signatureDir, 'bca_signature.sig');
-    const signed = await MLDSAWrapper._sign_mldsa65(
+    const signed = await Mldsa_wrapper.sign(
       bcaPrivateKey,
       JSON.stringify(message),
       signaturePath
