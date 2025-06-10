@@ -2,6 +2,9 @@ import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database.js';
 import Service from './Service.js'; // Assuming you have a Service model
 import Citizen from './Citizen.js'; // Assuming you have a Citizen model
+import { encrypt, decrypt } from '../config/cryptoUtils.js'; // Import encryption/decryption utilities
+const encrypt_fields = ['applicantCccd', 'applicantAddress', 'applicantPhone' , 'registrantBirthPlace', 'fatherAddress', 'motherAddress' ,'fatherName' , 'motherName'];
+
 class BirthRegistration extends Model {}
 BirthRegistration.init({
   // Primary key
@@ -198,6 +201,50 @@ BirthRegistration.init({
   modelName: 'BirthRegistration',
   tableName: 'BirthRegistrations',
   timestamps: true, // Automatically adds createdAt and updatedAt
+  hooks: {
+    beforeCreate: (citizen, options) => {
+      encrypt_fields.forEach(field => {
+        if (citizen[field]) {
+          citizen[field] = encrypt(citizen[field]);
+        }
+      });
+    },
+    beforeUpdate: (citizen, options) => {
+      encrypt_fields.forEach(field => {
+        if (citizen.changed(field)) {
+          citizen[field] = encrypt(citizen[field]);
+        }
+      });
+    },
+    afterFind: (citizen, options) => {
+      if (citizen) {
+        if (Array.isArray(citizen)) {
+          citizen.forEach(c => {
+            encrypt_fields.forEach(field => {
+              if (c[field]) {
+                try {
+                  c[field] = decrypt(c[field]);
+                } catch (e) {
+                  console.error(`Decryption failed for field ${field}:`, e.message);
+               }
+              }
+            });
+          });
+        } else {
+          encrypt_fields.forEach(field => {
+            if (citizen[field]) {
+              try {
+                citizen[field] = decrypt(citizen[field]);
+              } catch (e) {
+                console.error(`Decryption failed for field ${field}:`, e.message);
+ 
+              }
+            }
+          });
+        }
+      }
+    },
+  }
 });
 
 export default BirthRegistration;

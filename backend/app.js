@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from "dotenv";
-
+import tpmService from './utils/crypto/tpmController.js';
 import config from './config/config.js';
 import { initializeDatabase } from './config/database.js';
 
