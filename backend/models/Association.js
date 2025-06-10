@@ -37,7 +37,7 @@ Application.hasOne(FilePath, {
 FilePath.belongsTo(Application, {
   foreignKey: 'user_id',
   targetKey: 'user_id',
-  as: 'application'
+  as: 'applications'
 })
 
 export {User, Office, Role, Permission, RolePermission};

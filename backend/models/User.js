@@ -49,7 +49,7 @@ class User extends Model {
   static async initializePoliceRole(userId) {
     try {
       // Create police directory
-      const policeDir = path.join('/working', 'BCA', 'police', userId.toString());
+      const policeDir = path.join( process.cwd() ,'working', 'BCA', 'police', userId.toString());
       await fs.mkdir(policeDir, { recursive: true });
       await fs.mkdir(path.join(policeDir, 'csr'), { recursive: true });
       await fs.mkdir(path.join(policeDir, 'cert'), { recursive: true });
@@ -94,7 +94,7 @@ class User extends Model {
         public_key: publicKeyPath,
         csr: csrPath,
         certificate: certPath,
-        application: `/working/user/${userId}/application`
+        application: `/app/working/user/${userId}/application`
       });
 
       console.log(`Police role initialized for user ${userId}`);

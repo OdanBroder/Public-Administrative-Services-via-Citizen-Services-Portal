@@ -1,4 +1,5 @@
 import BirthRegistration from '../models/BirthRegistration.js';
+import {createApplication} from '../controllers/applicationController.js'; // Assuming you have a utility function to create applications
 // Controller to create a new birth registration
 export const createBirthRegistration = async (req, res) => {
   try {
@@ -114,7 +115,8 @@ export const createBirthRegistration = async (req, res) => {
       
       status: "pending"
     });
-    
+    req.body.service_id = 1;
+    await createApplication(req, res);
     res.status(201).json({
       success: true,
       message: "Đăng ký khai sinh thành công",
