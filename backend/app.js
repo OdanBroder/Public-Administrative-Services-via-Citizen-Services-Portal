@@ -10,7 +10,7 @@ import medicalCoverageRoutes from './routes/medicalCoverageRoutes.js';
 import serviceHealthRoutes from './routes/serviceHealthRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import citizenRoutes from './routes/citizen.js'
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/authMiddleware.js';
 import User from './models/User.js';
 import { createAdminUser } from './models/User.js';
 import consoleRoute from './routes/console.js';

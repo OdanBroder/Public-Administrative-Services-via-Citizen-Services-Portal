@@ -34,10 +34,11 @@ export const getUserApplications = async (req, res) => {
   }
 };
 
-// Get all applications (admin only)
+// Get all applications (admin sees all, staff sees only their office's applications)
 export const getAllApplications = async (req, res) => {
   try {
-    const applications = await Application.findAll({
+    // Build query based on user role and office
+    let queryOptions = {
       include: [
         {
           model: User,
@@ -47,7 +48,7 @@ export const getAllApplications = async (req, res) => {
         {
           model: Service,
           as: 'service',
-          attributes: ['id', 'name', 'description', 'status']
+          attributes: ['id', 'name', 'description', 'status', 'office_id']
         },
         {
           model: User,
@@ -56,12 +57,34 @@ export const getAllApplications = async (req, res) => {
         }
       ],
       order: [['created_at', 'DESC']]
-    });
+    };
+
+    // If user is not an admin, filter by office
+    if (req.user.role !== 'Admin') {
+      // Find user's office ID
+      const user = await User.findByPk(req.user.id, {
+        attributes: ['office_id']
+      });
+
+      if (user && user.office_id) {
+        // Join with Service and filter by office_id
+        queryOptions.include[1].where = { office_id: user.office_id };
+      } else {
+        return res.status(403).json({ 
+          error: 'Bạn không được phân công cho bất kỳ phòng ban nào' 
+        });
+      }
+    }
+
+    const applications = await Application.findAll(queryOptions);
 
     res.json(applications);
   } catch (error) {
-    console.error('Error fetching all applications:', error);
-    res.status(500).json({ error: 'Lỗi khi lấy danh sách đơn đăng ký' });
+    console.error('Error fetching applications:', error);
+    res.status(500).json({ 
+      error: 'Lỗi khi lấy danh sách đơn đăng ký',
+      details: error.message 
+    });
   }
 };
 
@@ -326,9 +349,32 @@ export const updateApplicationStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const application = await Application.findByPk(id);
+    // Find application with its service information
+    const application = await Application.findByPk(id, {
+      include: [{
+        model: Service,
+        as: 'service',
+        attributes: ['id', 'name', 'description', 'status', 'office_id']
+      }]
+    });
+
     if (!application) {
       return res.status(404).json({ error: 'Không tìm thấy đơn đăng ký' });
+    }
+
+    // Check if user has permission to update this application
+    if (req.user.role !== 'Admin') {
+      // Get user's office
+      const user = await User.findByPk(req.user.id, {
+        attributes: ['office_id']
+      });
+
+      // If user doesn't have office or office doesn't match service's office
+      if (!user.office_id || user.office_id !== application.service.office_id) {
+        return res.status(403).json({ 
+          error: 'Bạn không có quyền cập nhật trạng thái đơn đăng ký này' 
+        });
+      }
     }
 
     // Update application with processor info
@@ -365,7 +411,10 @@ export const updateApplicationStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating application:', error);
-    res.status(500).json({ error: 'Lỗi khi cập nhật đơn đăng ký' });
+    res.status(500).json({ 
+      error: 'Lỗi khi cập nhật đơn đăng ký',
+      details: error.message 
+    });
   }
 };
 
@@ -385,4 +434,4 @@ export const deleteApplication = async (req, res) => {
     console.error('Error deleting application:', error);
     res.status(500).json({ error: 'Lỗi khi xóa đơn đăng ký' });
   }
-}; 
+};

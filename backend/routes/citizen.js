@@ -6,8 +6,23 @@ import { createCitizen, getCitizenById } from '../controllers/citizenController.
 
 const router = express.Router();
 
-router.post("/", authenticate, upload, createCitizen);
-router.get("/:id", authenticate, getCitizenById);
+router.post("/", 
+  authenticate, 
+  authorize("submit_request", {
+    requiredRoles: [ROLES.CITIZEN, ROLES.ADMIN]
+  }),
+  upload, 
+  createCitizen
+);
+
+router.get("/:id", 
+  authenticate,
+  authorize(["view_own_request", "manage_users"], {
+    // Staff roles can view any citizen data
+    requiredRoles: [ROLES.CITIZEN, ROLES.ADMIN, ROLES.BCA, ROLES.SYT, ROLES.POLICE]
+  }),
+  getCitizenById
+);
 
 export default router;
 

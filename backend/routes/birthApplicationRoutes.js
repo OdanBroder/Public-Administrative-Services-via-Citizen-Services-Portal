@@ -1,28 +1,58 @@
 import express from 'express';
 const router = express.Router();
-import {  createBirthRegistration,
+import {
+  createBirthRegistration,
   getAllBirthRegistrations,
   getBirthRegistrationById,
   getBirthRegistrationByApplicantId,
   changeBirthRegistrationStatus
 } from '../controllers/birthRegistrationController.js';
-import { authenticate, authorize } from '../middleware/auth.js';
+import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
 
-// @route   POST api/birth-registration
-// @desc    Create a new birth registration
-// @access  Public
-router.post("/", authenticate, authorize("submit_request"), createBirthRegistration);
+router.post("/", 
+  authenticate, 
+  authorize("submit_request", { 
+    requiredRoles: ROLES.CITIZEN 
+  }), 
+  createBirthRegistration
+);
 
-// @route   GET api/birth-registration
-// @desc    Get all birth registrations with pagination
-// @access  Public
-router.get("/", authenticate, authorize("process_request", {checkOfficeScope: true, targetOfficeName:'UBND'}) , getAllBirthRegistrations);
+router.get("/", 
+  authenticate, 
+  authorize("process_request", {
+    requiredRoles: [ROLES.ADMIN, ROLES.BCA, ROLES.SYT],
+    checkOfficeScope: true, 
+    targetOfficeName: 'Birth Certificate Authority'
+  }),
+  getAllBirthRegistrations
+);
 
-// @route   GET api/birth-registration/:id
-// @desc    Get birth registration by ID
-// @access  Public
-router.get("/:id", authenticate, authorize(["view_own_request", "process_request"],{checkOfficeScope: true, targetOfficeName:'UBND'} ), getBirthRegistrationById);
+router.get("/:id", 
+  authenticate, 
+  authorize(["view_own_request", "process_request"], {
+    checkOfficeScope: true, 
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  getBirthRegistrationById
+);
 
-router.get("/user/:applicantId",authenticate, authorize(["view_own_request", "process_request"],{checkOfficeScope: true, targetOfficeName:'UBND'} ), getBirthRegistrationByApplicantId)
-router.patch("/status/:id", authenticate, authorize("process_request"), changeBirthRegistrationStatus );
+router.get("/user/:applicantId", 
+  authenticate, 
+  authorize(["view_own_request", "process_request"], {
+    checkOfficeScope: true, 
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  getBirthRegistrationByApplicantId
+);
+
+router.patch("/status/:id", 
+  authenticate, 
+  authorize("process_request", {
+    requiredRoles: [ROLES.ADMIN, ROLES.BCA],
+    checkOfficeScope: true, 
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  changeBirthRegistrationStatus
+);
+
 export default router;

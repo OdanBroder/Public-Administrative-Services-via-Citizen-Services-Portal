@@ -1,22 +1,27 @@
 import express from 'express';
 import { getUnverifiedUsers, signUserCertificate } from '../controllers/policeController.js';
-import { authenticate } from '../middleware/auth.js';
-import { checkRole } from '../middleware/checkRole.js';
+import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Get all unverified users
 router.get('/unverified-users',
     authenticate,
-    checkRole(['police']),
+    authorize('view_unverified_users', {
+        requiredRoles: ROLES.POLICE,
+        checkOfficeScope: true,
+        targetOfficeName: 'BCA'
+    }),
     getUnverifiedUsers
 );
 
-// Sign user certificate
 router.post('/sign-certificate/:userId',
     authenticate,
-    checkRole(['police']),
+    authorize('sign_certificate', {
+        requiredRoles: ROLES.POLICE,
+        checkOfficeScope: true,
+        targetOfficeName: 'BCA'
+    }),
     signUserCertificate
 );
 
-export default router; 
+export default router;

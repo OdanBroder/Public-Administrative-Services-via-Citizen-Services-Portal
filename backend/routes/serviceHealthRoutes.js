@@ -5,20 +5,34 @@ import {
   updateServiceHealth,
   deleteServiceHealth
 } from '../controllers/serviceHealthController.js';
-import { authenticate, authorize } from '../middleware/auth.js';
+import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Get service health (all authenticated users)
 router.get('/', authenticate, getServiceHealth);
 
-// Create service health (admin only)
-router.post('/', authenticate, authorize('manage_service_health'), createServiceHealth);
+router.post('/', 
+  authenticate, 
+  authorize('manage_service_health', {
+    requiredRoles: [ROLES.ADMIN, ROLES.SYT]
+  }), 
+  createServiceHealth
+);
 
-// Update service health (admin only)
-router.put('/:id', authenticate, authorize('manage_service_health'), updateServiceHealth);
+router.put('/:id', 
+  authenticate, 
+  authorize('manage_service_health', {
+    requiredRoles: [ROLES.ADMIN, ROLES.SYT]
+  }), 
+  updateServiceHealth
+);
 
-// Delete service health (admin only)
-router.delete('/:id', authenticate, authorize('manage_service_health'), deleteServiceHealth);
+router.delete('/:id', 
+  authenticate, 
+  authorize('manage_service_health', {
+    requiredRoles: ROLES.ADMIN
+  }), 
+  deleteServiceHealth
+);
 
-export default router; 
+export default router;

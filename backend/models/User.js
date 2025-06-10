@@ -50,7 +50,7 @@ class User extends Model {
   static async initializePoliceRole(userId) {
     try {
       // Create police directory
-      const policeDir = path.join(process.cwd(), 'working', 'BCA', 'police', userId.toString());
+      const policeDir = path.join('/working', 'BCA', 'police', userId.toString());
       await fs.mkdir(policeDir, { recursive: true });
       await fs.mkdir(path.join(policeDir, 'csr'), { recursive: true });
       await fs.mkdir(path.join(policeDir, 'cert'), { recursive: true });
@@ -101,7 +101,8 @@ class User extends Model {
         private_key: privateKeyPath,
         public_key: publicKeyPath,
         csr: csrPath,
-        certificate: certPath
+        certificate: certPath,
+        application: `/working/user/${userId}/application`
       });
 
       console.log(`Police role initialized for user ${userId}`);
@@ -263,109 +264,102 @@ User.hasOne(Citizen, { foreignKey: 'id' });
 
 async function createAdminUser(){
   try {
-    // Check if admin user already exists
-    const existingAdmin = await User.findOne({
-      where: {
-        username: 'admin'
-      }
-    });
-
-    if (!existingAdmin) {
-      const adminUser = await User.create({
+    // Create default users for each role type
+    const defaultUsers = [
+      {
         username: 'admin',
         email: "admin@example.com",
         firstName: 'Admin',
         lastName: 'User',
-        password: 'Admin@@123456', // Using the password from seed.sql
-        role_id: 1, // Assuming role_id 1 is for Admin
+        password: 'Admin@@123456',
+        role_id: 1, // Admin role
+        office_id: null, // Admin doesn't need office
         completeProfile: true,
         is_email_verified: true
-      });
-      console.log('Admin user created successfully');
-    }
-
-    // Check if regular user exists
-    const existingUser = await User.findOne({
-      where: {
-        username: 'user'
-      }
-    });
-
-    if (!existingUser) {
-      const regularUser = await User.create({
+      },
+      {
         username: 'user',
         email: "user@example.com",
         firstName: 'Regular',
         lastName: 'User',
-        password: 'User@@123456', // Using the password from seed.sql
-        role_id: 2, // Assuming role_id 2 is for Citizen
+        password: 'User@@123456',
+        role_id: 2, // Citizen role
+        office_id: null, // Citizens don't belong to an office
         completeProfile: true,
         is_email_verified: true
-      });
-      console.log('Regular user created successfully');
-    }
-    const existingStaff = await User.findOne({
-      where: {
-        username: 'staff'
-      }
-    });
-    if(!existingStaff) {
-      const staffUser = await User.create({
+      },
+      {
         username: 'staff',
         email: "staff@example.com",
         firstName: 'Staff',
-        lastName: 'User',
-        password: "Staff@@123456", // Using the password from seed.sql
-        role_id: 3, // Assuming role_id 3 is for Staff
+        lastName: 'Member',
+        password: 'Staff@@123456',
+        role_id: 3, // Staff role
+        office_id: 1, // UBND office
         completeProfile: true,
-        is_email_verified: true,
-        office_id: 1 // Assuming office_id 1 is for the default office
-      });
-      console.log('Staff user created successfully');
-    }
-    const existingHead = await User.findOne({
-      where: {
-        username: 'head'
-      }
-    });
-    if(!existingHead) {
-      const headUser = await User.create({
+        is_email_verified: true
+      },
+      {
         username: 'head',
         email: "head@example.com",
-        firstName: 'Head',
-        lastName: 'User',
-        password: "Head@@123456", // Using the password from seed.sql
-        role_id: 4, // Assuming role_id 4 is for Head
+        firstName: 'Department',
+        lastName: 'Head',
+        password: 'Head@@123456',
+        role_id: 4, // Head role
+        office_id: 1, // UBND office
         completeProfile: true,
-        is_email_verified: true,
-        office_id: 1 // Assuming office_id 1 is for the default office
-      });
-      console.log('Head user created successfully');
-    }
-
-    // Check if police user exists
-    const existingPolice = await User.findOne({
-      where: {
-        username: 'police'
-      }
-    });
-
-    if (!existingPolice) {
-      const policeUser = await User.create({
+        is_email_verified: true
+      },
+      {
         username: 'police',
         email: "police@example.com",
         firstName: 'Police',
         lastName: 'Officer',
         password: 'Police@@123456',
-        role_id: 5, // role_id 5 for Police
+        role_id: 5, // Police role
+        office_id: 3, // BCA office
         completeProfile: true,
         is_email_verified: true
+      },
+      {
+        username: 'bca',
+        email: "bca@example.com",
+        firstName: 'Birth',
+        lastName: 'Certificate',
+        password: 'Bca@@123456',
+        role_id: 6, // BCA role
+        office_id: 4, // Birth Certificate Authority office
+        completeProfile: true,
+        is_email_verified: true
+      },
+      {
+        username: 'syt',
+        email: "syt@example.com",
+        firstName: 'Health',
+        lastName: 'Department',
+        password: 'Syt@@123456',
+        role_id: 7, // SYT role
+        office_id: 2, // SYT office
+        completeProfile: true,
+        is_email_verified: true
+      }
+    ];
+
+    for (const userData of defaultUsers) {
+      // Check if user already exists
+      const existingUser = await User.findOne({
+        where: { username: userData.username }
       });
-      
-      // Initialize police role
-      await User.initializePoliceRole(policeUser.id);
-      
-      console.log('Police user created successfully');
+
+      if (!existingUser) {
+        const user = await User.create(userData);
+        console.log(`${userData.username} user created successfully`);
+        
+        // Initialize police role if needed
+        if (userData.role_id === 5) {
+          await User.initializePoliceRole(user.id);
+        }
+      }
     }
   }
   catch (error) {
