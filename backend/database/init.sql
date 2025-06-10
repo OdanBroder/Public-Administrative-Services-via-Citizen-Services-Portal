@@ -288,7 +288,7 @@ CREATE TABLE IF NOT EXISTS BirthRegistrations (
     mother_residence_type VARCHAR(50) NOT NULL DEFAULT 'thường trú',
     mother_address VARCHAR(255) NOT NULL,
     
-    status ENUM('pending', 'awaiting_signature', 'approved', 'rejected') NOT NULL DEFAULT 'chờ duyệt',
+    status ENUM('pending', 'awaiting_signature', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
     file_path VARCHAR(100) DEFAULT NULL,
     service_id INT UNSIGNED NOT NULL DEFAULT 1,
     

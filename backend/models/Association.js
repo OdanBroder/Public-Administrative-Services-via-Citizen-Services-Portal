@@ -6,6 +6,7 @@ import RolePermission from "./RolePermission.js";
 import Service from "./Service.js";
 import Application from "./Application.js";
 import FilePath from "./FilePath.js";
+import BirthRegistration from "./BirthRegistration.js";
 // console.log("Associations.js loaded");
 // console.log("User associations:", User.associations);
 // console.log("Office associations:", Office.associations);
@@ -42,5 +43,8 @@ FilePath.belongsTo(Application, {
   targetKey: 'user_id',
   as: 'applications'
 })
+
+User.hasMany(BirthRegistration, { foreignKey: 'applicant_id', as: 'birthRegistrations' });
+BirthRegistration.belongsTo(User, { foreignKey: 'applicant_id', as: 'applicant' });
 
 export {User, Office, Role, Permission, RolePermission};

@@ -1,4 +1,5 @@
 USE citizen_services;
+SET NAMES 'utf8mb4';
 
 -- Insert initial offices
 INSERT INTO Offices (name, description) VALUES 
@@ -93,10 +94,10 @@ INSERT INTO services (name, description, status, office_id, application_url) VAL
 ('Đăng ký khai sinh', 'Dịch vụ đăng ký khai sinh trực tuyến', 'active', (SELECT id FROM Offices WHERE name = 'Birth Certificate Authority'), '/ubnd/dang-ky-khai-sinh');
 
 -- Insert initial service health records
-INSERT INTO service_health (service_name, status, response_time, uptime, last_checked) VALUES
-('Khám sức khỏe', 'UP', 150, 99.9, NOW()),
-('Chăm sóc răng miệng', 'UP', 120, 99.8, NOW()),
-('Cấp cứu', 'UP', 100, 99.95, NOW()),
-('Tư vấn chuyên gia', 'UP', 180, 99.7, NOW()),
-('Dịch vụ xét nghiệm', 'UP', 200, 99.6, NOW());
+INSERT INTO service_health (service_id, status, response_time, uptime, last_checked) VALUES
+(1, 'UP', 150, 99.9, NOW()),
+(2, 'UP', 120, 99.8, NOW()),
+(3, 'UP', 100, 99.95, NOW()),
+(3, 'UP', 180, 99.7, NOW()),
+(3, 'UP', 200, 99.6, NOW());
 

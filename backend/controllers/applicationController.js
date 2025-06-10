@@ -89,22 +89,24 @@ export const getAllApplications = async (req, res) => {
 };
 
 // Create new application
-export const createApplication = async (req, res) => {
+// ...existing code...
+
+// Create new application (refactored to not send response, but return result or throw error)
+export const createApplication = async (req) => {
   try {
     const { service_id } = req.body;
 
     // Check if service exists
     const service = await Service.findByPk(service_id);
     if (!service) {
-      return res.status(404).json({ error: 'Không tìm thấy dịch vụ' });
+      throw new Error('Không tìm thấy dịch vụ');
     }
 
     // Check if user has registered for this service and get service data
     let serviceRegistration;
     let serviceData = {};
-
     switch (service.name.toLowerCase()) {
-      case 'birth registration':
+      case 'đăng ký khai sinh':
         serviceRegistration = await BirthRegistration.findOne({
           where: { applicantId: req.user.id, service_id },
           include: [{
@@ -115,7 +117,6 @@ export const createApplication = async (req, res) => {
         });
         if (serviceRegistration) {
           serviceData = {
-            // Applicant Information
             applicant_name: serviceRegistration.applicant_name,
             applicant_dob: serviceRegistration.applicant_dob,
             applicant_phone: serviceRegistration.applicant_phone,
@@ -123,8 +124,6 @@ export const createApplication = async (req, res) => {
             applicant_cccd_issue_date: serviceRegistration.applicant_cccd_issue_date,
             applicant_cccd_issue_place: serviceRegistration.applicant_cccd_issue_place,
             applicant_address: serviceRegistration.applicant_address,
-
-            // Registrant Information
             registrant_name: serviceRegistration.registrant_name,
             registrant_gender: serviceRegistration.registrant_gender,
             registrant_ethnicity: serviceRegistration.registrant_ethnicity,
@@ -134,24 +133,18 @@ export const createApplication = async (req, res) => {
             registrant_birth_place: serviceRegistration.registrant_birth_place,
             registrant_province: serviceRegistration.registrant_province,
             registrant_hometown: serviceRegistration.registrant_hometown,
-
-            // Father's Information
             father_name: serviceRegistration.father_name,
             father_dob: serviceRegistration.father_dob,
             father_ethnicity: serviceRegistration.father_ethnicity,
             father_nationality: serviceRegistration.father_nationality,
             father_residence_type: serviceRegistration.father_residence_type,
             father_address: serviceRegistration.father_address,
-
-            // Mother's Information
             mother_name: serviceRegistration.mother_name,
             mother_dob: serviceRegistration.mother_dob,
             mother_ethnicity: serviceRegistration.mother_ethnicity,
             mother_nationality: serviceRegistration.mother_nationality,
             mother_residence_type: serviceRegistration.mother_residence_type,
             mother_address: serviceRegistration.mother_address,
-
-            // Additional Information
             status: serviceRegistration.status,
             file_path: serviceRegistration.file_path
           };
@@ -198,13 +191,11 @@ export const createApplication = async (req, res) => {
         break;
 
       default:
-        return res.status(400).json({ error: 'Loại dịch vụ không hợp lệ' });
+        throw new Error('Loại dịch vụ không hợp lệ');
     }
 
     if (!serviceRegistration) {
-      return res.status(400).json({
-        error: 'Bạn chưa đăng ký dịch vụ này. Vui lòng đăng ký dịch vụ trước khi tạo đơn.'
-      });
+      throw new Error('Bạn chưa đăng ký dịch vụ này. Vui lòng đăng ký dịch vụ trước khi tạo đơn.');
     }
 
     // Create application with service-specific data
@@ -224,123 +215,116 @@ export const createApplication = async (req, res) => {
 
     const applicationDataString = JSON.stringify(application_data);
 
+    // Get user's private key from FilePath
+    const userFilePath = await FilePath.findOne({
+      where: { user_id: req.user.id }
+    });
+
+    if (!userFilePath || !userFilePath.private_key) {
+      throw new Error('Không tìm thấy private key của người dùng. Vui lòng tạo key pair trước.');
+    }
+
+    // Create message and sign by private key
+    const message = crypto.createHash('sha512').update(applicationDataString).digest('hex');
+
+    // Decrypt private key
+    const privateKeyContent = await tpmService.decryptWithRootKey(
+      await fs.readFile(userFilePath.private_key, 'utf8')
+    );
+
+    // Get base application directory from FilePath
+    const applicationDir = path.join(userFilePath.application, application.id.toString());
+    const sigDir = path.join(applicationDir, 'sig');
+    const messageDir = path.join(applicationDir, 'message');
+
     try {
-      // Get user's private key from FilePath
-      const userFilePath = await FilePath.findOne({
-        where: { user_id: req.user.id }
-      });
+      // Create directories
+      await fs.mkdir(sigDir, { recursive: true });
+      await fs.mkdir(messageDir, { recursive: true });
 
-      if (!userFilePath || !userFilePath.private_key) {
-        return res.status(400).json({ 
-          error: 'Không tìm thấy private key của người dùng. Vui lòng tạo key pair trước.' 
-        });
-      }
+      // Define file paths
+      const sigPath = path.join(sigDir, 'signature.bin');
+      const messagePath = path.join(messageDir, 'message.txt');
+      const metadataPath = path.join(applicationDir, 'metadata.json');
 
-      // Create message and sign by private key
-      const message = crypto.createHash('sha512').update(applicationDataString).digest('hex');
-
-      // Decrypt private key
-      const privateKeyContent = await tpmService.decryptWithRootKey(
-        await fs.readFile(userFilePath.private_key, 'utf8')
+      // Sign the message
+      const signature = await Mldsa_wrapper.sign(
+        privateKeyContent,
+        message,
+        sigPath
       );
 
-      // Get base application directory from FilePath
-      const applicationDir = path.join(userFilePath.application, application.id.toString());
-      const sigDir = path.join(applicationDir, 'sig');
-      const messageDir = path.join(applicationDir, 'message');
-
-      try {
-        // Create directories
-        await fs.mkdir(sigDir, { recursive: true });
-        await fs.mkdir(messageDir, { recursive: true });
-
-        // Define file paths
-        const sigPath = path.join(sigDir, 'signature.bin');
-        const messagePath = path.join(messageDir, 'message.txt');
-        const metadataPath = path.join(applicationDir, 'metadata.json');
-
-        // Sign the message
-        const signature = await Mldsa_wrapper.sign(
-          privateKeyContent,
-          message,
-          sigPath
-        );
-
-        if (!signature) {
-          throw new Error('Failed to create signature');
-        }
-
-        // Save message and metadata
-        await fs.writeFile(messagePath, message);
-        await fs.writeFile(metadataPath, JSON.stringify({
-          application_id: application.id,
-          service_type: service.name,
-          created_at: new Date().toISOString(),
-          signature_path: sigPath,
-          message_path: messagePath
-        }, null, 2));
-
-        // verify message with signature using certificate from FilePath
-        const is_verified = await Mldsa_wrapper.verifyWithCertificate(
-          signature, 
-          message, 
-          userFilePath.certificate, 
-          sigPath
-        );
-
-        if(is_verified){
-          await application.update({
-            status: 'awaiting_signature',
-            processed_by: req.user.id,
-            processed_at: new Date()
-          });
-        } else {
-          throw new Error('Verification failed');
-        }
-
-        // Fetch the created application with all details
-        const createdApplication = await Application.findByPk(application.id, {
-          include: [
-            {
-              model: User,
-              as: 'applicant',
-              attributes: ['id', 'username', 'email', 'firstName', 'lastName']
-            },
-            {
-              model: Service,
-              as: 'service',
-              attributes: ['id', 'name', 'description', 'status']
-            }
-          ]
-        });
-
-        res.status(201).json({
-          message: 'Tạo đơn đăng ký thành công',
-          application: createdApplication
-        });
-      } catch (error) {
-        // If any file operation fails, clean up the application directory
-        try {
-          await fs.rm(applicationDir, { recursive: true, force: true });
-        } catch (cleanupError) {
-          console.error('Error cleaning up application directory:', cleanupError);
-        }
-        
-        // Delete the application record
-        await application.destroy();
-        
-        throw error;
+      if (!signature) {
+        throw new Error('Failed to create signature');
       }
+
+      // Save message and metadata
+      await fs.writeFile(messagePath, message);
+      await fs.writeFile(metadataPath, JSON.stringify({
+        application_id: application.id,
+        service_type: service.name,
+        created_at: new Date().toISOString(),
+        signature_path: sigPath,
+        message_path: messagePath
+      }, null, 2));
+
+      // verify message with signature using certificate from FilePath
+      const is_verified = await Mldsa_wrapper.verifyWithCertificate(
+        signature, 
+        message, 
+        userFilePath.certificate, 
+        sigPath
+      );
+
+      if(is_verified){
+        await application.update({
+          status: 'awaiting_signature',
+          processed_by: req.user.id,
+          processed_at: new Date()
+        });
+      } else {
+        throw new Error('Verification failed');
+      }
+
+      // Fetch the created application with all details
+      const createdApplication = await Application.findByPk(application.id, {
+        include: [
+          {
+            model: User,
+            as: 'applicant',
+            attributes: ['id', 'username', 'email', 'firstName', 'lastName']
+          },
+          {
+            model: Service,
+            as: 'service',
+            attributes: ['id', 'name', 'description', 'status']
+          }
+        ]
+      });
+
+      // Instead of sending response, return the created application
+      return {
+        status: 'success',
+        message: 'Tạo đơn đăng ký thành công',
+        application: createdApplication
+      };
     } catch (error) {
-      console.error('Error creating application:', error);
-      res.status(500).json({ error: 'Lỗi khi tạo đơn đăng ký' });
+      // If any file operation fails, clean up the application directory
+      try {
+        await fs.rm(applicationDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.error('Error cleaning up application directory:', cleanupError);
+      }
+      // Delete the application record
+      await application.destroy();
+      throw error;
     }
   } catch (error) {
-    console.error('Error creating application:', error);
-    res.status(500).json({ error: 'Lỗi khi tạo đơn đăng ký' });
+    // Instead of sending response, throw error to be handled by caller
+    throw error;
   }
 };
-
+// ...existing code...
 // Update application status
 export const updateApplicationStatus = async (req, res) => {
   try {

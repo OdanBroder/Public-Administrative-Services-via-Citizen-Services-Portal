@@ -115,8 +115,8 @@ export const createBirthRegistration = async (req, res) => {
       
       status: "pending"
     });
-    req.body.service_id = 1;
-    await createApplication(req, res);
+    req.body.service_id = 6;
+    await createApplication(req);
     res.status(201).json({
       success: true,
       message: "Đăng ký khai sinh thành công",
