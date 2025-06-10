@@ -34,6 +34,8 @@ chmod 750 /tmp/tpm-service
 # Copy package files
 COPY package*.json ./
 
+RUN mkdir -p /app/working && chown -R appuser:appgroup /app/working && chmod 750 /app/working
+
 # Install dependencies
 RUN npm install --production=false && \
     npm install -g nodemon

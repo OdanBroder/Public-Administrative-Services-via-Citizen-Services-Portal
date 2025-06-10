@@ -27,7 +27,6 @@ Service.belongsTo(Office, { foreignKey: 'office_id', as: 'office' });
 // console.log("Office associations:", Office.associations);
 // console.log("Role associations:", Role.associations);
 // console.log("Permission associations:", Permission.associations);
-
 // Add association between Application and FilePath
 Application.hasOne(FilePath, { 
   foreignKey: 'user_id',
@@ -39,15 +38,6 @@ FilePath.belongsTo(Application, {
   foreignKey: 'user_id',
   targetKey: 'user_id',
   as: 'application'
-});
+})
 
-export {
-  User,
-  Office,
-  Role,
-  Permission,
-  RolePermission,
-  Service,
-  Application,
-  FilePath
-};
+export {User, Office, Role, Permission, RolePermission};

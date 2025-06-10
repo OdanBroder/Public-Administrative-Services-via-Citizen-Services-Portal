@@ -1,8 +1,8 @@
 import Citizen from "../models/Citizen.js";
 import User from "../models/User.js";
 import FilePath from "../models/FilePath.js";
-import { MLDSAWrapper } from "../utils/crypto/MLDSAWrapper.js";
-import { ScalableTPMService } from "../utils/crypto/MLDSAWrapper.js";
+import  Mldsa_wrapper  from "../utils/crypto/MLDSAWrapper.js";
+import tpmService from "../utils/crypto/tpmController.js";
 import { generateFilename } from "../config/multerConfig.js";
 import path from "path";
 import fs from "fs";
@@ -61,36 +61,27 @@ export const createCitizen = async (req, res) => {
     }
 
     // Create user directory if it doesn't exist
-    const userDir = path.join(process.cwd(), "working", "user", id.toString());
-    await fs.mkdir(userDir, { recursive: true });
-    await fs.mkdir(path.join(userDir, "csr"), { recursive: true });
+
     const userDir = path.join(process.cwd(), 'working', 'user', id.toString());
     const certDir = path.join(userDir, 'cert');
     const applicationDir = path.join(userDir, 'application');
 
     try {
       // Create directories
-      await fs.mkdir(userDir, { recursive: true });
-      await fs.mkdir(certDir, { recursive: true });
-      await fs.mkdir(applicationDir, { recursive: true });
+      await fs.promises.mkdir(userDir, { recursive: true });
+      await fs.promises.mkdir(certDir, { recursive: true });
+      await fs.promises.mkdir(applicationDir, { recursive: true });
 
       // Generate key pair and CSR using MLDSAWrapper
-      const { privateKey, publicKey } = await MLDSAWrapper.generateKeyPair();
+      const { privateKey, publicKey } = await Mldsa_wrapper.generateKeyPair();
       const csrPath = path.join(certDir, 'req.csr');
       const privateKeyPath = path.join(certDir, 'private.key');
       const publicKeyPath = path.join(certDir, 'public.key');
 
-      const subjectInfo = {
-        id: req.user.userId,
-        hoVaTen,
-        ngaySinh,
-        gioiTinh,
-        queQuan,
-        noiThuongTru,
-      };
+      const subjectInfo = ["C=VN", `L=${noiThuongTru}`, `CN=${hoVaTen}`];
 
       // Generate CSR
-      const csrGenerated = await MLDSAWrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
+      const csrGenerated = await Mldsa_wrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
       if (!csrGenerated) {
         throw new Error('Failed to generate CSR');
       }
@@ -106,17 +97,17 @@ export const createCitizen = async (req, res) => {
       });
 
       // Save private and public keys to files
-      await fs.writeFile(
+      await fs.promises.writeFile(
       privateKeyPath,
-      ScalableTPMService.encryptWithRootKey(privateKey)
+      await tpmService.encryptWithRootKey(privateKey)
     );
-      await fs.writeFile(publicKeyPath, publicKey);
+      await fs.promises.writeFile(publicKeyPath, publicKey);
 
       // Verify files were created successfully
       const filesExist = await Promise.all([
-        fs.access(privateKeyPath).then(() => true).catch(() => false),
-        fs.access(publicKeyPath).then(() => true).catch(() => false),
-        fs.access(csrPath).then(() => true).catch(() => false)
+        fs.promises.access(privateKeyPath).then(() => true).catch(() => false),
+        fs.promises.access(publicKeyPath).then(() => true).catch(() => false),
+        fs.promises.access(csrPath).then(() => true).catch(() => false)
       ]);
 
       if (filesExist.some(exists => !exists)) {
@@ -171,7 +162,7 @@ export const createCitizen = async (req, res) => {
     } catch (error) {
       // Cleanup on failure
       try {
-        await fs.rm(userDir, { recursive: true, force: true });
+        await fs.promises.rm(userDir, { recursive: true, force: true });
       } catch (cleanupError) {
         console.error('Error cleaning up user directory:', cleanupError);
       }

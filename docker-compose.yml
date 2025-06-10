@@ -59,8 +59,10 @@ services:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
       - tpm_data:/app/data
+      - working_dir:/app/working
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
-      - /tmp/tpm-container:/tmp/tpm-service
+      - tpm_service:/tmp/tpm-service
+      - upload_dir:/app/uploads
     networks:
       - app-network
 
@@ -116,3 +118,10 @@ volumes:
     name: citizen_services_frontend_dist
   tpm_data: 
     name: citizen_services_tpm_data
+  working_dir:
+    name: citizen_services_working_dir_ensureInitialized
+  tpm_service:
+    name: citizen_services_tpm_service
+  upload_dir:
+    name: citizen_services_upload_dir
+  

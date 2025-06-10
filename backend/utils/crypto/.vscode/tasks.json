@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compile with Emscripten",
+      "type": "shell",
+      "command": "emcc",
+      "args": [
+        "-O3",
+        "${file}", "key_generation.cpp", "signing.cpp",
+        "-I/home/aneii11/oqs-provider/openssl-build-wasm/include",
+        "-L/home/aneii11/oqs-provider/openssl-build-wasm/lib",
+        "-L/home/aneii11/oqs-provider/oqs-build-wasm/lib",
+        "-L/home/aneii11/oqs-provider/oqs-provider/_build/lib",
+        "-s", "WASM=1",
+        "-s", "MODULARIZE=1",
+        "-s", "EXPORT_NAME=createOQSModule",
+        "-s", "\"EXPORTED_FUNCTIONS=['_generate_mldsa65_keypair', '_generate_csr', '_malloc' ,'_generate_self_signed_certificate', '_sign_mldsa65' , '_verify_mldsa65', '_verify_signature_with_cert', '_free']\"",
+        "-s", "EXPORTED_RUNTIME_METHODS=\"['FS', 'NODEFS', 'ccall','cwrap','getValue','setValue','stringToUTF8','UTF8ToString']\"",
+        "-s", "ALLOW_MEMORY_GROWTH=1",
+        "-s", "ASSERTIONS=1",
+        "-s", "EXPORT_ES6=1",
+        "--no-entry",
+        "-lcrypto",
+        "-lssl",
+        "-lnodefs.js",
+        "-o",
+        "mldsa_lib.js"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Compile current file with Emscripten"
+    },
+    {
+      "label": "Compile with clang, linked to openssl 3.5",
+      "type": "shell",
+      "command": "/usr/bin/clang++",
+      "args": [
+        "-O3",
+        "-g2",
+        "-pthread",
+        "-std=c++20",
+        "${file}",
+        "-I/home/aneii11/oqs-provider/openssl-build-gcc/include",
+        "-L/home/aneii11/oqs-provider/openssl-build-gcc/lib",
+        "-lcrypto",
+        "-lssl",
+        "-o",
+        "${fileDirname}/${fileBasenameNoExtension}",
+        "-Wall",
+        "-Wno-unused-variable"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Compile current file with clang, linked to OpenSSL 3.5"
+    }
+  ]
+}
+

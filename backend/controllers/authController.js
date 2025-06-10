@@ -1,8 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import Role from '../models/Role.js';
-import Permission from '../models/Permission.js';
-import RolePermission from '../models/RolePermission.js';
+import { Role } from '../models/Association.js'
 import { validateEmail, validatePassword } from '../utils/validators.js';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService.js';
 

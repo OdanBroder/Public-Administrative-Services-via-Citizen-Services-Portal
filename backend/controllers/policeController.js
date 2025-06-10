@@ -1,9 +1,9 @@
 import User from '../models/User.js';
 import FilePath from '../models/FilePath.js';
-import { MLDSAWrapper } from '../utils/MLDSAWrapper.js';
+import  mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 import path from 'path';
 import fs from 'fs/promises';
-import ScalableTPMService from '../utils/crypto/ScalableTPMService.js';
+import tpmService from '../utils/crypto/tpmController.js';
 
 export const getUnverifiedUsers = async (req, res) => {
   try {
@@ -145,7 +145,7 @@ export const signUserCertificate = async (req, res) => {
     }
     
     // Read police's private key and certificate
-    const policePrivateKey = ScalableTPMService.decryptWithRootKey(
+    const policePrivateKey = await tpmService.decryptWithRootKey(
       await fs.readFile(policeFilePath.private_key, 'utf8')
     );
     const policeCertificate = await fs.readFile(policeFilePath.certificate, 'utf8');
@@ -158,7 +158,7 @@ export const signUserCertificate = async (req, res) => {
     const userCertPath = path.join(userCertDir, 'signed_cert.pem');
 
     // Sign the user's CSR using police's private key and certificate
-    const signed = await MLDSAWrapper.signCertificate(
+    const signed = await mldsa_wrapper.signCertificate(
       policePrivateKey,  // Police's private key as CA key
       365,               // Certificate valid for 1 year
       userFilePath.csr,  // User's CSR path

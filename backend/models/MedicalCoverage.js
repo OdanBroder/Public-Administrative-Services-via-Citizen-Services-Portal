@@ -59,9 +59,6 @@ class MedicalCoverage {
       updatedAt: 'updated_at'
     });
 
-    // Define associations
-    this.model.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
-    this.model.belongsTo(Service, { foreignKey: 'service_id', as: 'service' });
   }
 }
 

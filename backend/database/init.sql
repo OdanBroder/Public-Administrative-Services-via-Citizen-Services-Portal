@@ -245,8 +245,10 @@ CREATE TABLE IF NOT EXISTS file_path (
     public_key VARCHAR(100) DEFAULT NULL,  -- /working/user/user_id/cert/public.key
     csr VARCHAR(100) DEFAULT NULL,         -- /working/user/user_id/cert/req.csr
     certificate VARCHAR(100) DEFAULT NULL, -- /working/user/user_id/cert/signed_cert.pem
-    application VARCHAR(100) DEFAULT NULL  -- /working/user/user_id/application
+    application VARCHAR(100) DEFAULT NULL,  -- /working/user/user_id/application
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_file_path (id)
 );
 
@@ -305,7 +307,7 @@ CREATE TABLE IF NOT EXISTS BirthRegistrations (
 CREATE TABLE IF NOT EXISTS citizens (
     id INT UNSIGNED NOT NULL,
     ho_va_ten VARCHAR(255) NOT NULL,
-    so_cccd VARCHAR(20) NOT NULL UNIQUE,
+    so_cccd VARCHAR(255) NOT NULL UNIQUE,
     hinh_anh_cccd_truoc VARCHAR(255) NOT NULL,
     hinh_anh_cccd_sau VARCHAR(255) NOT NULL,
     noi_cap_cccd VARCHAR(255) NOT NULL,

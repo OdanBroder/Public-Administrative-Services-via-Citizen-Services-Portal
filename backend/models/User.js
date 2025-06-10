@@ -3,13 +3,12 @@ import bcrypt from 'bcryptjs';
 import sequelize from '../config/database.js';
 import Role from './Role.js'; // Import Role model
 import Office from './Office.js'; // Import Office model
-import { MLDSAWrapper } from '../utils/crypto/MLDSAWrapper.js';
-import { ScalableTPMService } from '../utils/crypto/MLDSAWrapper.js';
+import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
+import tpmService from '../utils/crypto/tpmController.js';
 import fs from 'fs/promises';
 import path from 'path';
 import Permission from './Permission.js';
 import RolePermission from './RolePermission.js';
-import Citizen from './Citizen.js';
 
 // Extend Model for User class
 class User extends Model {
@@ -56,15 +55,15 @@ class User extends Model {
       await fs.mkdir(path.join(policeDir, 'cert'), { recursive: true });
 
       // Generate police key pair using MLDSAWrapper
-      const { privateKey, publicKey } = await MLDSAWrapper.generateKeyPair();
+      const { privateKey, publicKey } = await Mldsa_wrapper.generateKeyPair();
 
       // Save keys to files
       const privateKeyPath = path.join(policeDir, 'private.key');
       const publicKeyPath = path.join(policeDir, 'public.key');
       const csrPath = path.join(policeDir, 'csr', 'req.csr');
       const certPath = path.join(policeDir, 'cert', 'signed_cert.pem');
-
-      await fs.writeFile(privateKeyPath, ScalableTPMService.encryptWithRootKey(privateKey));
+      const privKeyArr = await tpmService.encryptWithRootKey(privateKey);
+      await fs.writeFile(privateKeyPath, privKeyArr);
       await fs.writeFile(publicKeyPath, publicKey);
 
       // Get user information
@@ -74,20 +73,13 @@ class User extends Model {
       }
 
       // Create subject info for CSR
-      const subjectInfo = {
-        id: userId,
-        organization: 'BCA',
-        organizationalUnit: 'Police',
-        commonName: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        role: 'Police Officer'
-      };
+      const subjectInfo = ["C=VN", "L=Hanoi", "O=Bo Cong An", "CN=Police Officer"]
 
       // Generate CSR using MLDSAWrapper
-      await MLDSAWrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
+      await Mldsa_wrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
 
       // Self-sign the certificate
-      await MLDSAWrapper.generateSelfSignedCertificate(
+      await Mldsa_wrapper.generateSelfSignedCertificate(
         privateKey, // Use private key as CA key for self-signing
         365, // Certificate valid for 1 year
         csrPath,
@@ -131,17 +123,16 @@ class User extends Model {
       );
 
       // Get all permissions for this role
-      const rolePermissions = await RolePermission.findAll({
-        where: { role_id: role.id },
+      const rolePermissions = await Role.findByPk(role.id, {
         include: [{
           model: Permission,
-          attributes: ['name']
+          as: 'permissions',
+          through: { attributes: [] } // exclude junction table fields
         }]
       });
-
       return {
         role: role.name,
-        permissions: rolePermissions.map(rp => rp.Permission.name)
+        permissions: rolePermissions.permissions.map(rp => rp.name)
       };
     } catch (error) {
       console.error('Error assigning role and permissions:', error);
@@ -259,8 +250,7 @@ User.init({
 });
 
 // Define associations
-User.belongsTo(Role, { foreignKey: 'role_id' });
-User.hasOne(Citizen, { foreignKey: 'id' });
+
 
 async function createAdminUser(){
   try {

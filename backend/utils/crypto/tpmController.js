@@ -3,6 +3,7 @@ import child_process  from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+
 class ScalableTPMService {
     constructor(options = {}) {
         this.tempDir = options.tempDir || '/tmp/tpm-service';
@@ -14,8 +15,8 @@ class ScalableTPMService {
         // TPM Root Key configuration
         this.rootKeyConfig = {
             hierarchy: 'o', // Owner hierarchy
-            algorithm: 'rsa',
-            keyBits: 2048,
+            algorithm: 'ecc', // Changed from 'rsa' to 'ecc'
+            curveId: 'nistp256', // Added for ECC, specifies the elliptic curve
             hash: 'sha256',
             handle: '0x81000010', // Persistent handle for root key
             attributes: "fixedtpm|fixedparent|sensitivedataorigin|userwithauth|decrypt|restricted"
@@ -28,6 +29,11 @@ class ScalableTPMService {
             sealedKeyFile: path.join(this.sealedKeyStorage, 'app-aes-key.sealed')
         };
         
+        this.encryptingKeyConfig = {
+            algorithm: 'aes-256-gcm',
+            keyLength: 32, // 256 bits,
+            sealedKeyFile: path.join(this.sealedKeyStorage, 'encrypting-key.sealed')
+        }
         this.ensureDirectories();
         this.setupEnvironment();
     }
@@ -291,9 +297,6 @@ class ScalableTPMService {
         }
     }
 
-    /**
-     * Unseal application AES key
-     */
     async unsealAESKey() {
         try {
             if (!fs.existsSync(this.appKeyConfig.sealedKeyFile)) {
@@ -347,37 +350,185 @@ class ScalableTPMService {
         }
     }
 
+    async generateAndSealEncryptingKey(options = {}) {
+        const { 
+            keyLength = this.encryptingKeyConfig.keyLength,
+            algorithm = this.encryptingKeyConfig.algorithm,
+            pcrValues = null 
+        } = options;
+
+        try {
+            // Check if sealed key already exists
+            if (fs.existsSync(this.encryptingKeyConfig.sealedKeyFile)) {
+                console.log('Sealed AES key already exists');
+                return { exists: true, keyFile: this.encryptingKeyConfig.sealedKeyFile };
+            }
+
+            // Ensure root key exists
+            await this.initializeTPM();
+
+            // Generate AES key
+            console.log('Generating AES key...');
+            const aesKey = crypto.randomBytes(keyLength);
+            
+            // Create temporary files
+            const keyDataPath = this.getTempFilePath('aes_key.bin');
+            const sealedPubPath = this.getTempFilePath('sealed.pub');
+            const sealedPrivPath = this.getTempFilePath('sealed.priv');
+
+            try {
+                // Write AES key to temporary file
+                fs.writeFileSync(keyDataPath, aesKey);
+
+                // Create sealing object using root key
+                const createArgs = [
+                    '-C', this.rootKeyConfig.handle,
+                    '-g', this.rootKeyConfig.hash,
+                    '-i', keyDataPath,
+                    '-u', sealedPubPath,
+                    '-r', sealedPrivPath
+                ];
+
+                // Add PCR policy if specified
+                if (pcrValues && Array.isArray(pcrValues) && pcrValues.length > 0) {
+                    const pcrList = pcrValues.join(',');
+                    createArgs.push('-L', `pcr:${this.rootKeyConfig.hash}:${pcrList}`);
+                }
+
+                await this.executeTPMCommand('tpm2_create', createArgs);
+
+                // Combine sealed public and private parts
+                const sealedPub = fs.readFileSync(sealedPubPath);
+                const sealedPriv = fs.readFileSync(sealedPrivPath);
+                
+                const sealedData = {
+                    algorithm: algorithm,
+                    keyLength: keyLength,
+                    publicPart: sealedPub.toString('base64'),
+                    privatePart: sealedPriv.toString('base64'),
+                    pcrValues: pcrValues,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Save sealed data
+                fs.writeFileSync(this.encryptingKeyConfig.sealedKeyFile, JSON.stringify(sealedData, null, 2));
+
+                console.log('AES key generated and sealed successfully');
+                return { 
+                    success: true, 
+                    keyFile: this.encryptingKeyConfig.sealedKeyFile,
+                    algorithm: algorithm,
+                    keyLength: keyLength
+                };
+
+            } finally {
+                this.cleanupFiles([keyDataPath, sealedPubPath, sealedPrivPath]);
+            }
+
+        } catch (error) {
+            throw new Error(`Failed to generate and seal AES key: ${error.message}`);
+        }
+    }
+
+    /**
+     * Unseal application AES key
+     */
+    async unsealEncryptingKey() {
+        try {
+            if (!fs.existsSync(this.encryptingKeyConfig.sealedKeyFile)) {
+                throw new Error('Sealed AES key file not found');
+            }
+
+            // Read sealed data
+            const sealedData = JSON.parse(fs.readFileSync(this.encryptingKeyConfig.sealedKeyFile, 'utf8'));
+            
+            // Create temporary files
+            const sealedPubPath = this.getTempFilePath('sealed.pub');
+            const sealedPrivPath = this.getTempFilePath('sealed.priv');
+            const loadedCtxPath = this.getTempFilePath('loaded.ctx');
+            const unsealedDataPath = this.getTempFilePath('unsealed.bin');
+
+            try {
+                // Write sealed parts to temporary files
+                fs.writeFileSync(sealedPubPath, Buffer.from(sealedData.publicPart, 'base64'));
+                fs.writeFileSync(sealedPrivPath, Buffer.from(sealedData.privatePart, 'base64'));
+
+                // Load sealed object
+                await this.executeTPMCommand('tpm2_load', [
+                    '-C', this.rootKeyConfig.handle,
+                    '-u', sealedPubPath,
+                    '-r', sealedPrivPath,
+                    '-c', loadedCtxPath
+                ]);
+
+                // Unseal the data
+                await this.executeTPMCommand('tpm2_unseal', [
+                    '-c', loadedCtxPath,
+                    '-o', unsealedDataPath
+                ]);
+
+                // Read unsealed AES key
+                const aesKey = fs.readFileSync(unsealedDataPath);
+
+                console.log('AES key unsealed successfully');
+                return {
+                    key: aesKey,
+                    algorithm: sealedData.algorithm,
+                    keyLength: sealedData.keyLength
+                };
+
+            } finally {
+                this.cleanupFiles([sealedPubPath, sealedPrivPath, loadedCtxPath, unsealedDataPath]);
+            }
+
+        } catch (error) {
+            throw new Error(`Failed to unseal AES key: ${error.message}`);
+        }
+    }
+
     /**
      * Encrypt data using TPM root key (for protecting user keys)
      */
     async encryptWithRootKey(data) {
         try {
-            const dataFilePath = this.getTempFilePath('data_to_encrypt');
-            const encryptedFilePath = this.getTempFilePath('encrypted_data.bin');
+            // Ensure root key exists
+            await this.initializeTPM();
 
+            // 1. Get TPM root key public part
+            const rootKeyPubPath = this.getTempFilePath("root_key.pub");
             try {
-                // Write data to temporary file
-                if (Buffer.isBuffer(data)) {
-                    fs.writeFileSync(dataFilePath, data);
-                } else {
-                    fs.writeFileSync(dataFilePath, data, 'utf8');
-                }
+                await this.executeTPMCommand(
+                    "tpm2_readpublic",
+                    ["-c", this.rootKeyConfig.handle, "-o", rootKeyPubPath, "-f", "pem"]
+                );
+                const rootKeyPublicKeyPEM = fs.readFileSync(rootKeyPubPath, "utf8");
 
-                // Encrypt using TPM root key
-                await this.executeTPMCommand('tpm2_rsaencrypt', [
-                    '-c', this.rootKeyConfig.handle,
-                    '-o', encryptedFilePath,
-                    dataFilePath
-                ]);
-
-                // Read encrypted data
-                const encryptedData = fs.readFileSync(encryptedFilePath);
+                const secret = await this.unsealEncryptingKey()
                 
-                console.log('Data encrypted with TPM root key successfully');
-                return encryptedData;
+                const sharedSecret = secret.key;
+
+                // 4. Derive symmetric key (DEK) from shared secret
+
+                // 5. Symmetrically encrypt the actual data (ML-DSA-65 private key)
+                const iv = crypto.randomBytes(16); // AES-256-GCM IV
+                const cipher = crypto.createCipheriv("aes-256-gcm", sharedSecret, iv);
+                
+                let encryptedData = cipher.update(data);
+                encryptedData = Buffer.concat([encryptedData, cipher.final()]);
+                const authTag = cipher.getAuthTag();
+
+                // Combine ephemeral public key, IV, encrypted data, and auth tag
+                const combinedEncryptedData = JSON.stringify({
+                    iv: iv.toString("base64"),
+                    encryptedData: encryptedData.toString("base64"),
+                    authTag: authTag.toString("base64"),
+                });
+
+                console.log("Data encrypted with TPM root key via ECIES-like hybrid encryption successfully");
+                return Buffer.from(combinedEncryptedData);
 
             } finally {
-                this.cleanupFiles([dataFilePath, encryptedFilePath]);
+                this.cleanupFiles([rootKeyPubPath]);
             }
 
         } catch (error) {
@@ -386,38 +537,40 @@ class ScalableTPMService {
     }
 
     /**
-     * Decrypt data using TPM root key (for accessing user keys)
+     * Decrypt data using TPM root key (for accessing user keys) via ECIES-like hybrid encryption
      */
-    async decryptWithRootKey(encryptedData) {
+    async decryptWithRootKey(encryptedCombinedData) {
         try {
-            const encryptedFilePath = this.getTempFilePath('encrypted_data.bin');
-            const decryptedFilePath = this.getTempFilePath('decrypted_data.bin');
+            // Ensure root key exists
+            await this.initializeTPM();
+            const parsedData = JSON.parse(encryptedCombinedData.toString());
+            const iv = Buffer.from(parsedData.iv, "base64");
+            const encryptedData = Buffer.from(parsedData.encryptedData, "base64");
+            const authTag = Buffer.from(parsedData.authTag, "base64");
 
-            try {
-                // Write encrypted data to temporary file
-                fs.writeFileSync(encryptedFilePath, encryptedData);
+            try{
+                const secret = await this.unsealEncryptingKey();
+                const sharedSecret = secret.key;
 
-                // Decrypt using TPM root key
-                await this.executeTPMCommand('tpm2_rsadecrypt', [
-                    '-c', this.rootKeyConfig.handle,
-                    '-o', decryptedFilePath,
-                    encryptedFilePath
-                ]);
+                    // 2. Derive symmetric key (DEK) from shared secret
 
-                // Read decrypted data
-                const decryptedData = fs.readFileSync(decryptedFilePath);
-                
-                console.log('Data decrypted with TPM root key successfully');
+                // 3. Symmetrically decrypt the actual data (ML-DSA-65 private key)
+                const decipher = crypto.createDecipheriv("aes-256-gcm", sharedSecret, iv);
+                decipher.setAuthTag(authTag);
+
+                let decryptedData = decipher.update(encryptedData);
+                decryptedData = Buffer.concat([decryptedData, decipher.final()]);
+
+                console.log("Data decrypted with TPM root key via ECIES-like hybrid encryption successfully");
                 return decryptedData;
-
             } finally {
-                this.cleanupFiles([encryptedFilePath, decryptedFilePath]);
+                this.cleanupFiles([]);
             }
 
         } catch (error) {
             throw new Error(`Failed to decrypt data with TPM root key: ${error.message}`);
         }
-    }
+    }     
 
     /**
      * List all persistent keys
@@ -497,5 +650,10 @@ const AESContext = await tpmService.generateAndSealAESKey({
     algorithm: 'aes-256-gcm',
 });
 
+const encryptingKey = await tpmService.generateAndSealEncryptingKey({
+    keyLength: 32, // 256 bits
+    algorithm: 'aes-256-gcm',
+});
+
 export default tpmService;
-export { tpmService, handle, AESContext };
+export { tpmService, handle, AESContext, encryptingKey };

@@ -8,8 +8,8 @@ import crypto from "crypto";
 import path from 'path';
 import fs from 'fs/promises';
 
-import MLDSAWrapper from "../utils/crypto/MLDSAWrapper.js";
-import ScalableTPMService from "../utils/crypto/ScalableTPMService.js";
+import Mldsa_wrapper from "../utils/crypto/MLDSAWrapper.js";
+import tpmService from "../utils/crypto/tpmController.js";
 import FilePath from '../models/FilePath.js';
 
 // Get user's applications
@@ -240,7 +240,7 @@ export const createApplication = async (req, res) => {
       const message = crypto.createHash('sha512').update(applicationDataString).digest('hex');
 
       // Decrypt private key
-      const privateKeyContent = ScalableTPMService.decryptWithRootKey(
+      const privateKeyContent = await tpmService.decryptWithRootKey(
         await fs.readFile(userFilePath.private_key, 'utf8')
       );
 
@@ -260,7 +260,7 @@ export const createApplication = async (req, res) => {
         const metadataPath = path.join(applicationDir, 'metadata.json');
 
         // Sign the message
-        const signature = await MLDSAWrapper._sign_mldsa65(
+        const signature = await Mldsa_wrapper.sign(
           privateKeyContent,
           message,
           sigPath
@@ -281,9 +281,7 @@ export const createApplication = async (req, res) => {
         }, null, 2));
 
         // verify message with signature using certificate from FilePath
-        const userCertificate = await fs.readFile(userFilePath.certificate, 'utf8');
-        const is_verified = MLDSAWrapper.verifyWithCertificate(
-          userCertificate, 
+        const is_verified = await Mldsa_wrapper.verifyWithCertificate(
           signature, 
           message, 
           userFilePath.certificate, 
