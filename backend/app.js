@@ -2,22 +2,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from "dotenv";
-import tpmService from './utils/crypto/tpmController.js';
 import config from './config/config.js';
 import { initializeDatabase } from './config/database.js';
-
 import medicalCoverageRoutes from './routes/medicalCoverageRoutes.js';
 import serviceHealthRoutes from './routes/serviceHealthRoutes.js';
-import applicationRoutes from './routes/applicationRoutes.js';
 import citizenRoutes from './routes/citizen.js'
 import authRoutes from './routes/auth.js';
-import User from './models/User.js';
 import { createAdminUser } from './models/User.js';
 import consoleRoute from './routes/console.js';
 import Role from './models/Role.js';
 import birthRegistrationRoutes from './routes/birthApplicationRoutes.js';
 import servicesRoutes from './routes/serviceRoute.js';
-// import adminRoutes from './routes/adminRoutees.js';
 import policeRoutes from './routes/policeRoutes.js';
 import bcaRoutes from './routes/bcaRoutes.js';
 dotenv.config();
@@ -38,10 +33,8 @@ app.use('/api/citizen', citizenRoutes);
 app.use('/api/medical-coverage', medicalCoverageRoutes);
 app.use('/api/service-health', serviceHealthRoutes);
 app.use('/api/admin', consoleRoute);
-app.use('/api/applications', applicationRoutes);
 app.use('/api/birth-registration', birthRegistrationRoutes);
 app.use('/api/services',  servicesRoutes)
-// app.use('/api/admin', adminRoutes);
 app.use('/api/police', policeRoutes);
 app.use('/api/bca', bcaRoutes);
 // Health check endpoint

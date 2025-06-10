@@ -1,22 +1,21 @@
 import BirthRegistration from '../models/BirthRegistration.js';
+import { Op } from 'sequelize';
 import User from '../models/User.js';
 import FilePath from '../models/FilePath.js';
 import path from 'path';
 import fs from 'fs/promises';
-import  Mldsa_wrapper  from '../utils/crypto/MLDSAWrapper.js';
+import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 import tpmController from '../utils/crypto/tpmController.js';
 
 // Get all birth registration applications awaiting signature
 export const getPendingApplications = async (req, res) => {
   try {
     const applications = await BirthRegistration.findAll({
-      where: {
-        status: 'awaiting_signature'
-      },
+      attributes: ['id', 'registrantName', 'registrantDob', 'status'],
       include: [{
         model: User,
         as: 'applicant',
-        attributes: ['id', 'username', 'email', 'first_name', 'last_name']
+        attributes: ['username']
       }],
       order: [['created_at', 'DESC']]
     });
@@ -39,9 +38,9 @@ export const getPendingApplications = async (req, res) => {
 // Get a specific birth registration application
 export const getApplicationById = async (req, res) => {
   try {
-    const { applicationId } = req.params;
+    const { birthRegistrationId } = req.params;
 
-    const application = await BirthRegistration.findByPk(applicationId, {
+    const application = await BirthRegistration.findByPk(birthRegistrationId, {
       include: [{
         model: User,
         as: 'applicant',
@@ -71,20 +70,65 @@ export const getApplicationById = async (req, res) => {
   }
 };
 
+// Verify a birth registration application
+export const verifyApplication = async (req, res) => {
+  try {
+    const { birthRegistrationId } = req.params;
+    const bcaId = req.user.userId;
+
+    const application = await BirthRegistration.findByPk(birthRegistrationId);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn đăng ký khai sinh"
+      });
+    }
+
+    if (application.status !== 'awaiting_signature') {
+      return res.status(400).json({
+        success: false,
+        message: "Đơn đăng ký không ở trạng thái chờ ký"
+      });
+    }
+
+    // Update application status to verified
+    await application.update({
+      status: 'verified',
+      processed_by: bcaId,
+      processed_at: new Date()
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Xác minh đơn đăng ký khai sinh thành công",
+      data: {
+        applicationId: application.id
+      }
+    });
+  } catch (error) {
+    console.error("Lỗi khi xác minh đơn đăng ký khai sinh:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+}
+
 // Approve a birth registration application
 export const approveApplication = async (req, res) => {
   try {
-    const { applicationId } = req.params;
+    const { birthRegistrationId } = req.params;
     const bcaId = req.user.userId;
 
-    const application = await BirthRegistration.findByPk(applicationId, {
+    const application = await BirthRegistration.findByPk(birthRegistrationId, {
       include: [{
         model: FilePath,
         as: 'filePath',
         attributes: ['application']
       }]
     });
-    
+
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -113,7 +157,7 @@ export const approveApplication = async (req, res) => {
 
     // Construct application file path
     const applicationPath = path.join(application.filePath.application, applicationId.toString());
-    
+
     // Verify all required files exist
     const requiredFiles = [
       bcaFilePath.private_key,
@@ -147,7 +191,7 @@ export const approveApplication = async (req, res) => {
       signature: sigData,
       time: Date.now()
     };
-    
+
     // Sign the application
     const signaturePath = path.join(signatureDir, 'bca_signature.sig');
     const signed = await Mldsa_wrapper.sign(
@@ -188,7 +232,7 @@ export const approveApplication = async (req, res) => {
 // Reject a birth registration application
 export const rejectApplication = async (req, res) => {
   try {
-    const { applicationId } = req.params;
+    const { birthRegistrationId } = req.params;
     const { reason } = req.body;
     const bcaId = req.user.userId;
 
@@ -199,7 +243,7 @@ export const rejectApplication = async (req, res) => {
       });
     }
 
-    const application = await BirthRegistration.findByPk(applicationId);
+    const application = await BirthRegistration.findByPk(birthRegistrationId);
     if (!application) {
       return res.status(404).json({
         success: false,

@@ -4,7 +4,6 @@ import Role from "./Role.js";
 import Permission from "./Permission.js";
 import RolePermission from "./RolePermission.js";
 import Service from "./Service.js";
-import Application from "./Application.js";
 import FilePath from "./FilePath.js";
 import BirthRegistration from "./BirthRegistration.js";
 // console.log("Associations.js loaded");
@@ -32,17 +31,6 @@ Service.belongsTo(Office, { foreignKey: 'office_id', as: 'office' });
 // console.log("Role associations:", Role.associations);
 // console.log("Permission associations:", Permission.associations);
 // Add association between Application and FilePath
-Application.hasOne(FilePath, { 
-  foreignKey: 'user_id',
-  sourceKey: 'user_id',
-  as: 'filePath'
-});
-
-FilePath.belongsTo(Application, {
-  foreignKey: 'user_id',
-  targetKey: 'user_id',
-  as: 'applications'
-})
 
 User.hasMany(BirthRegistration, { foreignKey: 'applicant_id', as: 'birthRegistrations' });
 BirthRegistration.belongsTo(User, { foreignKey: 'applicant_id', as: 'applicant' });

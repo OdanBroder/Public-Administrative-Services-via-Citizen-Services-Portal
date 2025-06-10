@@ -18,7 +18,6 @@ const BirthRegistrationDetail = () => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
       const response = await api.get(`/birth-registration/${id}`);
 
       const data = response.data;
@@ -41,20 +40,16 @@ const BirthRegistrationDetail = () => {
 
   async function handleAccept() {
     try {
-      const res = await api.get(`/bca/application/${id}/verify`); 
-      const is_verfied = res.data.success;
+      const response = await api.post(`/birth-registration/verify/${id}`); 
+      const is_verfied = response.data.success;
       if(!is_verfied) {
         setError("Thủ tục xác thực không thành công");
         return;
       }
-        // call api  signature verify:
-        // req.param = birthReg.applicationId.
-      const response = await api.patch(`/birth-registration/status/${id}`, {
-        status: "awaiting_signature",
-      });
+
       if (response.data.success) {
         setError("Thủ tục đã được duyệt và đưa vào hàng chờ ký.");
-        navigate("/birth-registrations");
+        navigate("/bca/birth-registrations");
 
       } else {
         setError(response.data.message || "Không thể duyệt thủ tục.");
@@ -67,9 +62,9 @@ const BirthRegistrationDetail = () => {
 
   const handleApprove = async () => {
     try {
-      const response = await api.post(`/bca/applications/${id}/approve`);
+      const response = await api.post(`/bca/birthRegistrations/${id}/approve`);
       if (response.data.success) {
-        navigate('/bca/applications/pending');
+        navigate('/bca/birth-registrations');
       } else {
         setError(response.data.message || 'Không thể phê duyệt đơn đăng ký');
       }
@@ -80,9 +75,9 @@ const BirthRegistrationDetail = () => {
 
   const handleReject = async () => {
     try {
-      const response = await api.post(`/bca/applications/${id}/reject`);
+      const response = await api.post(`/bca/birthRegistrations/${id}/reject`);
       if (response.data.success) {
-        navigate('/bca/applications/pending');
+        navigate('/bca/birth-registrations');
       } else {
         setError(response.data.message || 'Không thể từ chối đơn đăng ký');
       }
@@ -105,7 +100,7 @@ const BirthRegistrationDetail = () => {
   };
 
   const handleBack = () => {
-    navigate("/birth-registrations");
+    navigate("/bca/birth-registrations");
   };
 
   if (loading) {
@@ -464,28 +459,28 @@ const BirthRegistrationDetail = () => {
           </div>
         </div>
         { role === "Head"  || role === "Staff" || role === "BCA" && (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg flex justify-start p-4">
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg flex justify-center p-6 space-x-4">
           <button
             type="button"
-            className="text-white bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-full text-md px-5 py-2.5 text-center me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            className="text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
             onClick={handleAccept}
           >
             Duyệt thủ tục và đưa vào hàng chờ ký
           </button>
           <button
             type="button"
-            className="text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-full text-sm px-5 py-2.5 text-center me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
+            className="text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
             onClick={handleReject}
           >
-            Hủy thủ tục 
-          </button>  
+            Hủy thủ tục
+          </button>
           <button
             type="button"
-            className="text-white bg-red-700 hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-full text-sm px-5 py-2.5 text-center me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
+            className="text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
             onClick={handleApprove}
           >
-            Phê duyệt thủ tục.
-          </button>  
+            Phê duyệt thủ tục
+          </button>
         </div>
 
 

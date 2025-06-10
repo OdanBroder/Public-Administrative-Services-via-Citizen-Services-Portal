@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import {
   createBirthRegistration,
+  verifyBirthRegistration,
   getAllBirthRegistrations,
   getBirthRegistrationById,
   getBirthRegistrationByApplicantId,
@@ -16,6 +17,16 @@ router.post("/",
   }), 
   createBirthRegistration
 );
+
+router.post("/verify/:birthRegistrationId",
+  authenticate, 
+  authorize("process_request", {
+    requiredRoles: [ROLES.ADMIN, ROLES.BCA],
+    checkOfficeScope: true, 
+    targetOfficeName: 'Birth Certificate Authority'
+  }), 
+  verifyBirthRegistration
+); 
 
 router.get("/", 
   authenticate, 

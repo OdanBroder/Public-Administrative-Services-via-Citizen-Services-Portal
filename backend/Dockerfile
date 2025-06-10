@@ -52,4 +52,5 @@ USER appuser
 EXPOSE 5000
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 # Start the application
-CMD ["node", "/app/app.js"]
+# CMD ["node", "/app/app.js"]
+CMD ["npm", "run", "dev"]

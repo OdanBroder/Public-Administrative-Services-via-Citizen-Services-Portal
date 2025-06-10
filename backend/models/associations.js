@@ -5,7 +5,7 @@ import MedicalCoverage from './MedicalCoverage.js';
 User.hasMany(MedicalCoverage, {foreignKey: 'citizenId',as: 'medicalCoverages'});
 
 MedicalCoverage.belongsTo(User, {
-  foreignKey: 'citizenId',
+  foreignKey: 'user_id',
   as: 'user'
 });
 

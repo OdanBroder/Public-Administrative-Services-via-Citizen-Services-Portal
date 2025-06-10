@@ -10,7 +10,7 @@ import {
 const router = express.Router();
 
 // Get all pending birth registration applications
-router.get('/applications/pending', 
+router.get('/birthRegistrations', 
   authenticate, 
   authorize('view_bca_applications', { 
     requiredRoles: ROLES.BCA,
@@ -21,7 +21,7 @@ router.get('/applications/pending',
 );
 
 // Get a specific birth registration application
-router.get('/applications/:applicationId', 
+router.get('/birthRegistrations/:birthRegistrationId', 
   authenticate, 
   authorize('view_bca_applications', { 
     requiredRoles: ROLES.BCA,
@@ -32,7 +32,7 @@ router.get('/applications/:applicationId',
 );
 
 // Approve a birth registration application
-router.post('/applications/:applicationId/approve', 
+router.post('/birthRegistrations/:birthRegistrationId/approve', 
   authenticate, 
   authorize('process_bca_applications', { 
     requiredRoles: ROLES.BCA,
@@ -43,7 +43,7 @@ router.post('/applications/:applicationId/approve',
 );
 
 // Reject a birth registration application
-router.post('/applications/:applicationId/reject', 
+router.post('/birthRegistrations/:birthRegistrationId/reject', 
   authenticate, 
   authorize('process_bca_applications', { 
     requiredRoles: ROLES.BCA,

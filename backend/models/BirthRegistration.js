@@ -3,7 +3,6 @@ import sequelize from '../config/database.js';
 import Service from './Service.js'; // Assuming you have a Service model
 import Citizen from './Citizen.js'; // Assuming you have a Citizen model
 import { encrypt, decrypt } from '../config/cryptoUtils.js'; // Import encryption/decryption utilities
-import Application from './Application.js';
 const encrypt_fields = ['applicantCccd', 'applicantAddress', 'applicantPhone' , 'registrantBirthPlace', 'fatherAddress', 'motherAddress' ,'fatherName' , 'motherName'];
 
 class BirthRegistration extends Model {}

@@ -12,11 +12,10 @@ import BirthRegistrationForm from './components/BirthRegistrationForm';
 import ServiceList from './components/ServiceList';
 import AdminConsole from './components/UserManagement';
 import { Unauthorized } from './components/UnauthorizedPage';
-import BirthRegistrationDetail from './components/BirthRegistrationDetail';
+import BirthRegistrationDetail from './components/BCABirthRegistrationDetail';
 import BirthRegistrationList from './components/BirthRegistrationList';
 import MyRegistration from './components/BirthRegistrationProf';
-import BCAPendingApplications from './components/BCAPendingApplications';
-import BCAApplicationDetail from './components/BCAApplicationDetail';
+import BCAPendingApplications from './components/BCABirthRegistrations';
 import UnverifiedUsersTable from './components/UnverifiedUsersTable';
 // 4 Defined roles: Admin, Citizen, Staff, Head
 const AuthorizedRoute = ({ children, required_role }) => {
@@ -31,9 +30,9 @@ const AuthorizedRoute = ({ children, required_role }) => {
     return <Navigate to="/login" />;
   }
 
-  if(Array.isArray(required_role)){
+  if (Array.isArray(required_role)) {
     const hasPermission = required_role.some((r) => role === r)
-    if(!hasPermission) {
+    if (!hasPermission) {
       return <Navigate to="/unauthorized" />; // or any fallback
     }
     return children;
@@ -69,7 +68,7 @@ const AppContent = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Banner />
-      <Navbar user={user} role={role}/>
+      <Navbar user={user} role={role} />
       <div className="container mx-auto px-4 py-8">
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -111,41 +110,36 @@ const AppContent = () => {
           }></Route>
           <Route path="/public-services" element={
             <ProtectedRoute>
-              <ServiceList/>
+              <ServiceList />
             </ProtectedRoute>
 
-          }/>
+          } />
           <Route path="/view-applications" element={
             <AuthorizedRoute required_role={["Head", "Staff", "BCA"]}>
               <BirthRegistrationList></BirthRegistrationList>
             </AuthorizedRoute>
           } ></Route>
-          <Route path="/birth-registration/:id" element={
-            <ProtectedRoute>
-              <BirthRegistrationDetail />
-            </ProtectedRoute>
-          }/>
-          <Route path="/unauthorized" element={<Unauthorized />} />
-          <Route path="/my-application" element={
-            <ProtectedRoute>
-              <MyRegistration></MyRegistration>
-            </ProtectedRoute>
-          } />
-          <Route path="/bca/applications/pending" element={
+          <Route path="/bca/birth-registrations" element={
             <AuthorizedRoute required_role="BCA">
               <BCAPendingApplications />
             </AuthorizedRoute>
           } />
-          <Route path="/bca/applications/:applicationId" element={
-            <AuthorizedRoute required_role="BCA">
-              <BCAApplicationDetail />
-            </AuthorizedRoute>
+          <Route path="/bca/birth-registration/:id" element={
+            <ProtectedRoute>
+              <BirthRegistrationDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-application" element={
+            <ProtectedRoute>
+              <MyRegistration></MyRegistration>
+            </ProtectedRoute>
           } />
           <Route path="/police/unverifyUsers" element={
             <AuthorizedRoute required_role="Police">
               <UnverifiedUsersTable />
             </AuthorizedRoute>
           } />
+          <Route path="/unauthorized" element={<Unauthorized />} />
         </Routes>
       </div>
     </div>

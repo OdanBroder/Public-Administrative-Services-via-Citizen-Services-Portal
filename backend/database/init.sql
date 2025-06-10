@@ -88,26 +88,6 @@ CREATE TABLE IF NOT EXISTS services (
     CONSTRAINT fk_service_office FOREIGN KEY (office_id) REFERENCES Offices(id) ON DELETE SET NULL
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- 7. Applications Table
-CREATE TABLE IF NOT EXISTS applications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNSIGNED NOT NULL,
-    service_id INT UNSIGNED NOT NULL,
-    application_data JSON,
-    status ENUM('pending', 'awaiting_signature', 'approved', 'rejected') DEFAULT 'pending',
-    processed_by INT UNSIGNED NULL,
-    processed_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
-    FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_user_id (user_id),
-    INDEX idx_service_id (service_id),
-    INDEX idx_status (status),
-    INDEX idx_processed_by (processed_by)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
 -- 8. Bảo hiểm Y tế Table
 CREATE TABLE IF NOT EXISTS medical_coverage (
     id INT AUTO_INCREMENT PRIMARY KEY,
