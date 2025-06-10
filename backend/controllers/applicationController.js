@@ -95,7 +95,7 @@ export const getAllApplications = async (req, res) => {
 export const createApplication = async (req) => {
   try {
     const { service_id } = req.body;
-
+    console
     // Check if service exists
     const service = await Service.findByPk(service_id);
     if (!service) {

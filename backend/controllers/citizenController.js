@@ -211,8 +211,8 @@ export const getCitizenById = async (req, res) => {
     const citizen = await Citizen.findByPk(id);
 
     if (!citizen) {
-      return res.status(404).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: "Không tìm thấy thông tin công dân",
       });
     }

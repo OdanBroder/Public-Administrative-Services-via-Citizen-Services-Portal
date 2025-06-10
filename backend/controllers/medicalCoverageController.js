@@ -14,7 +14,7 @@ export const getMedicalCoverage = async (req, res) => {
       const allCoverage = await MedicalCoverage.findAll({
         attributes: [
           'id',
-          'citizenId',
+          'user_id',
           'type',
           'startDate',
           'endDate',
