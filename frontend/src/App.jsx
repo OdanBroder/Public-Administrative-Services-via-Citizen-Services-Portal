@@ -15,6 +15,8 @@ import { Unauthorized } from './components/UnauthorizedPage';
 import BirthRegistrationDetail from './components/BirthRegistrationDetail';
 import BirthRegistrationList from './components/BirthRegistrationList';
 import MyRegistration from './components/BirthRegistrationProf';
+import BCAPendingApplications from './components/BCAPendingApplications';
+import BCAApplicationDetail from './components/BCAApplicationDetail';
 // 4 Defined roles: Admin, Citizen, Staff, Head
 const AuthorizedRoute = ({ children, required_role }) => {
   const { user, loading, role } = useAuth();
@@ -125,6 +127,16 @@ const AppContent = () => {
             <ProtectedRoute>
               <MyRegistration></MyRegistration>
             </ProtectedRoute>
+          } />
+          <Route path="/bca/applications/pending" element={
+            <AuthorizedRoute required_role="BCA">
+              <BCAPendingApplications />
+            </AuthorizedRoute>
+          } />
+          <Route path="/bca/applications/:applicationId" element={
+            <AuthorizedRoute required_role="BCA">
+              <BCAApplicationDetail />
+            </AuthorizedRoute>
           } />
         </Routes>
       </div>
