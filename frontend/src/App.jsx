@@ -17,6 +17,7 @@ import BirthRegistrationList from './components/BirthRegistrationList';
 import MyRegistration from './components/BirthRegistrationProf';
 import BCAPendingApplications from './components/BCAPendingApplications';
 import BCAApplicationDetail from './components/BCAApplicationDetail';
+import UnverifiedUsersTable from './components/UnverifiedUsersTable';
 // 4 Defined roles: Admin, Citizen, Staff, Head
 const AuthorizedRoute = ({ children, required_role }) => {
   const { user, loading, role } = useAuth();
@@ -36,6 +37,7 @@ const AuthorizedRoute = ({ children, required_role }) => {
     }
     return children;
   }
+  console.log("AuthorizedRoute", required_role, role);
   // Check if required_role matches user's role
   if (required_role && role !== required_role) {
     return <Navigate to="/unauthorized" />; // or any fallback
@@ -136,6 +138,11 @@ const AppContent = () => {
           <Route path="/bca/applications/:applicationId" element={
             <AuthorizedRoute required_role="BCA">
               <BCAApplicationDetail />
+            </AuthorizedRoute>
+          } />
+          <Route path="/police/unverifyUsers" element={
+            <AuthorizedRoute required_role="Police">
+              <UnverifiedUsersTable />
             </AuthorizedRoute>
           } />
         </Routes>

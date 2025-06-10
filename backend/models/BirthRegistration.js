@@ -202,24 +202,24 @@ BirthRegistration.init({
   tableName: 'BirthRegistrations',
   timestamps: true, // Automatically adds createdAt and updatedAt
   hooks: {
-    beforeCreate: (citizen, options) => {
+    beforeCreate: (birthregistration, options) => {
       encrypt_fields.forEach(field => {
-        if (citizen[field]) {
-          citizen[field] = encrypt(citizen[field]);
+        if (birthregistration[field]) {
+          birthregistration[field] = encrypt(birthregistration[field]);
         }
       });
     },
-    beforeUpdate: (citizen, options) => {
+    beforeUpdate: (birthregistration, options) => {
       encrypt_fields.forEach(field => {
-        if (citizen.changed(field)) {
-          citizen[field] = encrypt(citizen[field]);
+        if (birthregistration.changed(field)) {
+          birthregistration[field] = encrypt(birthregistration[field]);
         }
       });
     },
-    afterFind: (citizen, options) => {
-      if (citizen) {
-        if (Array.isArray(citizen)) {
-          citizen.forEach(c => {
+    afterFind: (birthregistration, options) => {
+      if (birthregistration) {
+        if (Array.isArray(birthregistration)) {
+          birthregistration.forEach(c => {
             encrypt_fields.forEach(field => {
               if (c[field]) {
                 try {
@@ -232,9 +232,9 @@ BirthRegistration.init({
           });
         } else {
           encrypt_fields.forEach(field => {
-            if (citizen[field]) {
+            if (birthregistration[field]) {
               try {
-                citizen[field] = decrypt(citizen[field]);
+                birthregistration[field] = decrypt(birthregistration[field]);
               } catch (e) {
                 console.error(`Decryption failed for field ${field}:`, e.message);
  

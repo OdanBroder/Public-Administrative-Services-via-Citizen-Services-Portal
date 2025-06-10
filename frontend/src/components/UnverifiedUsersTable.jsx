@@ -22,7 +22,7 @@ const UnverifiedUsersTable = () => {
       setVerifyingUserId(null);
     }
   };
-
+  console.log(users);
   const handleRefresh = () => {
     refetch();
     showToast('Refreshing user list...', 'success', 2000);

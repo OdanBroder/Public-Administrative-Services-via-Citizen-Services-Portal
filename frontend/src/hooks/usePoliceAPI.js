@@ -1,22 +1,17 @@
 import { useState, useEffect } from 'react';
-import api from '../lib/api';
-
+import {useAuth} from '../context/AuthContext';
 export const useUnverifiedUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const { api } = useAuth();
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/app/police/unverified-users');
-      
-      if (response.success) {
-        setUsers(response.data || []);
-      } else {
-        throw new Error(response.message || 'Failed to fetch users');
-      }
+      const response = await api.get('/police/unverified-users');
+      setUsers(response.data.data || []);
+
     } catch (err) {
       setError(err.message);
       setUsers([]);
@@ -28,7 +23,7 @@ export const useUnverifiedUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
-
+  // console.log(error)
   return {
     users,
     loading,
@@ -40,19 +35,17 @@ export const useUnverifiedUsers = () => {
 export const useVerifyUser = () => {
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
+  const { api } = useAuth();
 
   const verifyUser = async (userId) => {
     try {
       setVerifying(true);
       setError(null);
       
-      const response = await api.post(`/app/police/sign-certificate/${userId}`);
-      
-      if (response.success) {
-        return response;
-      } else {
-        throw new Error(response.message || 'Failed to verify user');
-      }
+      const response = await api.post(`/police/sign-certificate/${userId}`);
+      return response.data;
+
+
     } catch (err) {
       setError(err.message);
       throw err;

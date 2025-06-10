@@ -20,7 +20,10 @@ Office.hasMany(User, { foreignKey: 'office_id', as: 'users' });
 
 Role.belongsToMany(Permission, { through: RolePermission, foreignKey: 'role_id', as: "permissions" });
 Permission.belongsToMany(Role, { through: RolePermission, foreignKey: 'permission_id', as: "roles" });
-
+// ...existing code...
+User.hasOne(FilePath, { foreignKey: 'user_id', as: 'FilePath' });
+FilePath.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
+// ...existing code...
 Office.hasMany(Service, { foreignKey: 'office_id', as: 'services' });
 Service.belongsTo(Office, { foreignKey: 'office_id', as: 'office' });
 // console.log("User associations:", User.associations);

@@ -20,6 +20,8 @@ function encrypt(text) {
 function decrypt(encryptedBase64) {
   const combined = Buffer.from(encryptedBase64, 'base64');
   const iv = combined.slice(0, 12); // IV is 12 bytes
+  console.log("IV length:", iv.length);
+  console.log("IV: ", iv.toString('hex'));
   const authTag = combined.slice(12, 28); // AuthTag is 16 bytes (from GCM)
   const encryptedData = combined.slice(28);
 

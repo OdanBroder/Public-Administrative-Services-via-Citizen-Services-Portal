@@ -255,19 +255,19 @@ CREATE TABLE IF NOT EXISTS file_path (
 -- 17. Birth Registrations Table
 CREATE TABLE IF NOT EXISTS BirthRegistrations (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    applicantId INT UNSIGNED,
+    applicant_id INT UNSIGNED,
     applicant_name VARCHAR(255) NOT NULL,
     applicant_dob DATE NOT NULL,
-    applicant_phone VARCHAR(20) NOT NULL,
-    applicant_cccd VARCHAR(20) NOT NULL,
+    applicant_phone VARCHAR(255) NOT NULL,
+    applicant_cccd VARCHAR(255) NOT NULL,
     applicant_cccd_issue_date DATE NOT NULL,
     applicant_cccd_issue_place VARCHAR(255) NOT NULL,
     applicant_address VARCHAR(255) NOT NULL,
     
     registrant_name VARCHAR(255) NOT NULL,
-    registrant_gender VARCHAR(10) NOT NULL,
-    registrant_ethnicity VARCHAR(50) NOT NULL,
-    registrant_nationality VARCHAR(50) NOT NULL,
+    registrant_gender VARCHAR(255) NOT NULL,
+    registrant_ethnicity VARCHAR(255) NOT NULL,
+    registrant_nationality VARCHAR(255) NOT NULL,
     registrant_dob DATE NOT NULL,
     registrant_dob_in_words VARCHAR(255) NOT NULL,
     registrant_birth_place VARCHAR(255) NOT NULL,
@@ -288,17 +288,17 @@ CREATE TABLE IF NOT EXISTS BirthRegistrations (
     mother_residence_type VARCHAR(50) NOT NULL DEFAULT 'thường trú',
     mother_address VARCHAR(255) NOT NULL,
     
-    status ENUM('chờ duyệt', 'chờ ký', 'thành công', 'từ chối') NOT NULL DEFAULT 'chờ duyệt',
+    status ENUM('pending', 'awaiting_signature', 'approved', 'rejected') NOT NULL DEFAULT 'chờ duyệt',
     file_path VARCHAR(100) DEFAULT NULL,
     service_id INT UNSIGNED NOT NULL DEFAULT 1,
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (applicantId) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (applicant_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
     
-    INDEX idx_applicant_id (applicantId),
+    INDEX idx_applicant_id (applicant_id),
     INDEX idx_status (status),
     INDEX idx_service_id (service_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;

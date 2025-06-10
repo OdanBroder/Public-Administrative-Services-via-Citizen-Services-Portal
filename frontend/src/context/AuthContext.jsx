@@ -62,6 +62,7 @@ export const AuthProvider = ({ children }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       const { role } = response.data;
+      console.log('Fetched role:', role);
       setRole(role);
     } catch (error) {
       console.error('Failed to fetch role:', error);

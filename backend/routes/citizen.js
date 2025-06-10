@@ -11,6 +11,7 @@ router.post("/",
     requiredRoles: [ROLES.CITIZEN, ROLES.ADMIN]
   }),
   upload, 
+  encryptFileMiddleware,
   createCitizen
 );
 

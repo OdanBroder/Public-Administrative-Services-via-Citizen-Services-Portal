@@ -15,6 +15,7 @@ export const getUnverifiedUsers = async (req, res) => {
       attributes: ['id', 'username', 'email', 'first_name', 'last_name'],
       include: [{
         model: FilePath,
+        as: 'FilePath',
         attributes: ['csr', 'public_key', 'certificate'],
         required: true
       }]
@@ -148,7 +149,6 @@ export const signUserCertificate = async (req, res) => {
     const policePrivateKey = await tpmService.decryptWithRootKey(
       await fs.readFile(policeFilePath.private_key, 'utf8')
     );
-    const policeCertificate = await fs.readFile(policeFilePath.certificate, 'utf8');
 
     // Get user's cert directory from FilePath
     const userCertDir = path.dirname(userFilePath.private_key);
@@ -162,7 +162,7 @@ export const signUserCertificate = async (req, res) => {
       policePrivateKey,  // Police's private key as CA key
       365,               // Certificate valid for 1 year
       userFilePath.csr,  // User's CSR path
-      policeCertificate, // Police's certificate as CA cert
+      policeFilePath.certificate, // Police's certificate as CA cert
       userCertPath       // Path to save signed certificate
     );
 

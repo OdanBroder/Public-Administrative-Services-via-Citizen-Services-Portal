@@ -223,13 +223,13 @@ export const getCitizenById = async (req, res) => {
 
     if (citizen.hinhAnhCCCDTruoc) {
       const encryptedFrontBuffer = fs.readFileSync(citizen.hinhAnhCCCDTruoc);
-      const decryptedFrontBuffer = decrypt(encryptedFrontBuffer);
+      const decryptedFrontBuffer = decrypt(encryptedFrontBuffer.toString());
       decryptedFrontImageBase64 = decryptedFrontBuffer.toString('base64');
     }
 
     if (citizen.hinhAnhCCCDSau) {
       const encryptedBackBuffer = fs.readFileSync(citizen.hinhAnhCCCDSau);
-      const decryptedBackBuffer = decrypt(citizen.hinhAnhCCCDSau);
+      const decryptedBackBuffer = decrypt(encryptedBackBuffer.toString());
       decryptedBackImageBase64 = decryptedBackBuffer.toString('base64');
     }
     
