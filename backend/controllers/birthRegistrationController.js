@@ -166,17 +166,26 @@ export const createBirthRegistration = async (req, res) => {
 
       if (!signature) {
         throw new Error('Failed to create signature');
-      }
+      } 
+
 
       // Save message and metadata
       await fs.promises.writeFile(messagePath, message);
-
+      const msg_load = await fs.promises.readFile(messagePath);
+      console.log("Message:", msg_load.toString());
+      console.log("Certificate Path:", userFilePath.certificate);
+      console.log("Signature Path:", sigPath);
+      const verified = await Mldsa_wrapper.verifyWithCertificate(msg_load, userFilePath.certificate, sigPath);
+      if (!verified) {
+        throw new Error('Signature verification failed');
+      }
       // Update the birth registration with file paths
       await birthApplication_new.update({
         file_path: applicationDir
       });
     }
-    finally {
+    catch (error) {
+      console.error("Signing failed: ", error);
 
     }
     res.status(201).json({
@@ -199,7 +208,7 @@ export const verifyBirthRegistration = async (req, res) => {
     const { birthRegistrationId } = req.params;
 
     const birthRegistration = await BirthRegistration.findByPk(birthRegistrationId, {
-      attributes: ['applicant_id', 'file_path', 'status'],
+      attributes: ['id', 'applicant_id', 'file_path', 'status'],
     });
 
     if (!birthRegistration) {
@@ -248,11 +257,13 @@ export const verifyBirthRegistration = async (req, res) => {
 
     // Read signature and message
     const signature = await fs.promises.readFile(sigPath, 'utf8');
-    const message = await fs.promises.readFile(messagePath, 'utf8');
+    const message = await fs.promises.readFile(messagePath);
 
+    console.log("Message:", message.toString());
+    console.log("Certificate Path:", userPath.certificate);
+    console.log("Signature Path:", sigPath);
     // Verify the signature
     const is_verified = await Mldsa_wrapper.verifyWithCertificate(
-      signature,
       message,
       userPath.certificate,
       sigPath

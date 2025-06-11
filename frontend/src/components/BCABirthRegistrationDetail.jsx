@@ -40,20 +40,30 @@ const BirthRegistrationDetail = () => {
 
   async function handleAccept() {
     try {
-      const response = await api.post(`/birth-registration/verify/${id}`); 
-      const is_verfied = response.data.success;
-      if(!is_verfied) {
-        setError("Thủ tục xác thực không thành công");
-        return;
+      try{
+        const response = await api.post(`/birth-registration/verify/${id}`); 
+        const is_verfied = response.data.success;
+        if(!is_verfied) {
+          setError("Thủ tục xác thực không thành công");
+          return;
+        }
+        if (response.data.success) {
+          setError("Thủ tục đã được duyệt và đưa vào hàng chờ ký.");
+          navigate("/bca/birth-registrations");
+
+        } else {
+          setError(response.data.message || "Không thể duyệt thủ tục.");
+        }
+      }
+      catch(err){
+        if(err.response) {
+          setError(err.response?.data?.message || "Lỗi xác thực thủ tục");
+          return;
+        }
       }
 
-      if (response.data.success) {
-        setError("Thủ tục đã được duyệt và đưa vào hàng chờ ký.");
-        navigate("/bca/birth-registrations");
 
-      } else {
-        setError(response.data.message || "Không thể duyệt thủ tục.");
-      }
+
     } catch (error) {
       console.error("Error accepting registration:", error);
       setError("Đã xảy ra lỗi khi duyệt thủ tục. Vui lòng thử lại sau.");

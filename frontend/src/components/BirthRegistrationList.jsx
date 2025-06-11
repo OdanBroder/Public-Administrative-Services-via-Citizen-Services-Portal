@@ -47,7 +47,7 @@ const BirthRegistrationList = () => {
   };
 
   const handleProcess = (id) => {
-    navigate(`/birth-registration/${id}`);
+    navigate(`/bca/birth-registration/${id}`);
   };
 
   const formatDate = (dateString) => {

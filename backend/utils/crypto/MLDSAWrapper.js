@@ -454,14 +454,13 @@ class MLDSAWrapper {
 
   /**
    * Verifies a signature using a certificate.
-   * @param {Uint8Array} signature - The signature to verify
    * @param {string|Uint8Array} message - The original message
    * @param {string} [certPath='/working/cert.pem'] - Virtual FS path to save the certificate
    * @param {string} [signaturePath='/working/signature.bin'] - Virtual FS path to save the signature
    * @returns {Promise<boolean>} True if the signature is valid, false otherwise
    * @throws {Error} If verification process fails
    */
-  async verifyWithCertificate(signature, message, certPath = '/working/cert.pem', signaturePath = '/working/signature.bin') {
+  async verifyWithCertificate(message, certPath = '/working/cert.pem', signaturePath = '/working/signature.bin') {
     this._ensureInitialized();
     
     // Convert message to Uint8Array if it's a string
@@ -479,8 +478,6 @@ class MLDSAWrapper {
       // Copy message to WASM memory
       this._copyToWasmMemory(messagePtr, messageBytes);
       
-      // Write certificate and signature to virtual FS
-      this.FS.writeFile(signaturePath, signature);
       
       // Verify the signature
       const result = this._verify_signature_with_cert(

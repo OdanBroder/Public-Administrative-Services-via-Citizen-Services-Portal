@@ -21,11 +21,11 @@ import UnverifiedUsersTable from './components/UnverifiedUsersTable';
 const AuthorizedRoute = ({ children, required_role }) => {
   const { user, loading, role } = useAuth();
   console.log("AuthorizedRoute", required_role, role);
-  debugger;
+  // debugger;
   if (loading) {
     return <div>Loading...</div>;
   }
-  console.log("FDSFDSFDSFDFDSFDSF");
+  // console.log("FDSFDSFDSFDFDSFDSF");
   if (!user) {
     return <Navigate to="/login" />;
   }
