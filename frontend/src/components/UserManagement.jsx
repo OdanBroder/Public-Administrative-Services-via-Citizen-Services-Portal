@@ -337,6 +337,9 @@ const AdminConsole = () => {
                 <option value="Citizen">Citizen</option>
                 <option value="Staff">Staff</option>
                 <option value="Head">Head</option>
+                <option value="Police">Police</option>
+                <option value="BCA">BCA</option>
+                <option value="SYT">SYT</option>
               </select>
             </div>
             
