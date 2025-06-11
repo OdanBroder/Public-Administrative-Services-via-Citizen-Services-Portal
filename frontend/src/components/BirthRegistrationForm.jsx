@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const BirthRegistrationForm = () => {
-  const { user, api, role } = useAuth();
+  const { user, api } = useAuth();
+  const navigate = useNavigate();
   const [confirm, setConfirm] = useState(false);
   // State for form data with all four sections
   const [formData, setFormData] = useState({
@@ -49,6 +51,10 @@ const BirthRegistrationForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [submitStatus, setSubmitStatus] = useState({ type: "", message: "" });
 
+  if (!user) {
+    navigate("/login");
+  }
+
   useEffect(() => {
     fetchCitizenData(user.id);
 
@@ -60,11 +66,6 @@ const BirthRegistrationForm = () => {
       ...formData,
       [name]: value,
     });
-  };
-
-  // Handle citizen ID input change
-  const handleCitizenIdChange = (e) => {
-    setCitizenId(e.target.value);
   };
 
   // Fetch citizen data for auto-fill
@@ -83,7 +84,7 @@ const BirthRegistrationForm = () => {
     try {
       const response = await api.get(`/citizen/${cID}`);
 
-      if (response.data.success) {
+      if (response.success) {
         const citizen = response.data.data;
 
         // Auto-fill applicant information
@@ -107,9 +108,8 @@ const BirthRegistrationForm = () => {
       console.error("Error fetching citizen data:", error);
       setSubmitStatus({
         type: "error",
-        message: `Lỗi: ${
-          error.response?.data?.message || "Không thể tải thông tin công dân"
-        }`,
+        message: `Lỗi: ${error.response?.data?.message || "Không thể tải thông tin công dân"
+          }`,
       });
     } finally {
       setIsLoading(false);
@@ -192,9 +192,8 @@ const BirthRegistrationForm = () => {
       console.error("Error submitting form:", error);
       setSubmitStatus({
         type: "error",
-        message: `Lỗi: ${
-          error.response?.data?.message || "Không thể gửi đơn đăng ký"
-        }`,
+        message: `Lỗi: ${error.response?.data?.message || "Không thể gửi đơn đăng ký"
+          }`,
       });
     } finally {
       setIsLoading(false);
@@ -213,11 +212,10 @@ const BirthRegistrationForm = () => {
 
           {submitStatus.message && (
             <div
-              className={`mb-4 p-4 rounded-md ${
-                submitStatus.type === "success"
+              className={`mb-4 p-4 rounded-md ${submitStatus.type === "success"
                   ? "bg-green-100 text-green-800"
                   : "bg-red-100 text-red-800"
-              }`}
+                }`}
             >
               {submitStatus.message}
             </div>
@@ -789,8 +787,8 @@ const BirthRegistrationForm = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-start"> 
-              <input type="checkbox" name="confirm" id="confirm" onChange={(e) => setConfirm(e.target.checked)}/>
+            <div className="flex justify-start">
+              <input type="checkbox" name="confirm" id="confirm" onChange={(e) => setConfirm(e.target.checked)} />
               <label
                 htmlFor="confirm"
                 className="inline-flex items-center text-md text-gray-700 mb-2"
@@ -802,9 +800,8 @@ const BirthRegistrationForm = () => {
               <button
                 type="submit"
                 disabled={isLoading || !confirm}
-                className={`px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  isLoading ? "bg-blue-600/60 cursor-not-allowed" : ""
-                }`}
+                className={`px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isLoading ? "bg-blue-600/60 cursor-not-allowed" : ""
+                  }`}
               >
                 {isLoading ? "Đang xử lý..." : "Gửi đơn đăng ký khai sinh"}
               </button>

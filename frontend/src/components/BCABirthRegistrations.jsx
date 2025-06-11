@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
-import axios from 'axios';
 
 const BCAPendingBirthRegistrations = () => {
-    const { api } = useAuth();
+    const { role, api } = useAuth();
     const [birthRegistrations, setBirthRegistrations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
+
+    if (!role || role !== "BCA") {
+        navigate("/unauthorized");
+    }
 
     useEffect(() => {
         fetchPendingBirthRegistrations();
@@ -102,12 +105,11 @@ const BCAPendingBirthRegistrations = () => {
                                     {registration.applicant.username ? `${registration.applicant.username}` : 'N/A'}
                                 </td>
                                 <td className="px-6 py-3 text-center whitespace-nowrap">
-                                    <span className={`px-3 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                        registration.status === 'awaiting_signature' ? 'bg-yellow-100 text-yellow-800' :
+                                    <span className={`px-3 inline-flex text-xs leading-5 font-semibold rounded-full ${registration.status === 'awaiting_signature' ? 'bg-yellow-100 text-yellow-800' :
                                         registration.status === 'pending' ? 'bg-blue-100 text-blue-800' :
-                                        registration.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                        'bg-red-100 text-red-800'
-                                    }`}>
+                                            registration.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                'bg-red-100 text-red-800'
+                                        }`}>
                                         {getStatusText(registration.status)}
                                     </span>
                                 </td>

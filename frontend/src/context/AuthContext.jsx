@@ -78,7 +78,16 @@ export const AuthProvider = ({ children }) => {
       const { accessToken, refreshToken, user } = response?.data;
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
+
       setUser(user);
+
+      // Fetch role immediately after login
+      const roleResponse = await api.get('/auth/role', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const { role } = roleResponse.data;
+      setRole(role);
+      
       // debugger;
       console.log(JSON.stringify(user));
       if (user.completedProfile === false) {

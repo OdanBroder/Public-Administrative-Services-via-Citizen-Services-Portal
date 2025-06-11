@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
 const BirthRegistrationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -8,6 +9,10 @@ const BirthRegistrationDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { api, role } = useAuth();
+
+  if (!role || role !== "BCA") {
+    navigate("/unauthorized");
+  }
 
   useEffect(() => {
     fetchRegistrationDetails();
@@ -30,7 +35,7 @@ const BirthRegistrationDetail = () => {
     } catch (err) {
       setError(
         err.response?.data?.error ||
-          "Error fetching registration details. Please try again later."
+        "Error fetching registration details. Please try again later."
       );
       console.error("Error fetching registration details:", err);
     } finally {
@@ -40,10 +45,10 @@ const BirthRegistrationDetail = () => {
 
   async function handleAccept() {
     try {
-      try{
-        const response = await api.post(`/birth-registration/verify/${id}`); 
+      try {
+        const response = await api.post(`/birth-registration/verify/${id}`);
         const is_verfied = response.data.success;
-        if(!is_verfied) {
+        if (!is_verfied) {
           setError("Thủ tục xác thực không thành công");
           return;
         }
@@ -55,8 +60,8 @@ const BirthRegistrationDetail = () => {
           setError(response.data.message || "Không thể duyệt thủ tục.");
         }
       }
-      catch(err){
-        if(err.response) {
+      catch (err) {
+        if (err.response) {
           setError(err.response?.data?.message || "Lỗi xác thực thủ tục");
           return;
         }
@@ -218,19 +223,18 @@ const BirthRegistrationDetail = () => {
               </p>
             </div>
             <span
-              className={`px-3 py-1 rounded-full text-md font-medium ${
-                registration.status === "approved"
+              className={`px-3 py-1 rounded-full text-md font-medium ${registration.status === "approved"
                   ? "bg-green-100 text-green-800"
                   : registration.status === "rejected"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-yellow-100 text-yellow-800"
-              }`}
+                    ? "bg-red-100 text-red-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
             >
               {registration.status === "approved"
                 ? "Đã duyệt"
                 : registration.status === "rejected"
-                ? "Từ chối"
-                : "Đang xử lý"}
+                  ? "Từ chối"
+                  : "Đang xử lý"}
             </span>
           </div>
         </div>
@@ -468,30 +472,30 @@ const BirthRegistrationDetail = () => {
             </dl>
           </div>
         </div>
-        { role === "Head"  || role === "Staff" || role === "BCA" && (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg flex justify-center p-6 space-x-4">
-          <button
-            type="button"
-            className="text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
-            onClick={handleAccept}
-          >
-            Duyệt thủ tục và đưa vào hàng chờ ký
-          </button>
-          <button
-            type="button"
-            className="text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
-            onClick={handleReject}
-          >
-            Hủy thủ tục
-          </button>
-          <button
-            type="button"
-            className="text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
-            onClick={handleApprove}
-          >
-            Phê duyệt thủ tục
-          </button>
-        </div>
+        {role === "Head" || role === "Staff" || role === "BCA" && (
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg flex justify-center p-6 space-x-4">
+            <button
+              type="button"
+              className="text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
+              onClick={handleAccept}
+            >
+              Duyệt thủ tục và đưa vào hàng chờ ký
+            </button>
+            <button
+              type="button"
+              className="text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
+              onClick={handleReject}
+            >
+              Hủy thủ tục
+            </button>
+            <button
+              type="button"
+              className="text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
+              onClick={handleApprove}
+            >
+              Phê duyệt thủ tục
+            </button>
+          </div>
 
 
         )}

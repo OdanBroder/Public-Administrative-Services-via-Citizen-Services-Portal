@@ -1,17 +1,24 @@
-import React from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { ChevronDown, User } from "lucide-react"; // Import icons
 
-// Replace with your actual user state and auth logic
-// For demo: const { user, login, logout } = useAuth();
 const Navbar = ({ user, role }) => {
-  // Pass user and handlers as props
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const toggleDropdown = () => {
+    setDropdownOpen(!dropdownOpen);
+  };
+
+  const closeDropdown = () => {
+    setDropdownOpen(false);
   };
 
   return (
@@ -24,32 +31,37 @@ const Navbar = ({ user, role }) => {
               to="/"
               className="text-2xl font-bold hover:text-theme-red transition-colors"
             >
-              OurSite{" "}
-              {/* Or an <img src="/logo.svg" alt="Logo" className="h-8 w-auto" /> */}
+              <img src="/quoc-huy-60x62.png" alt="Logo" className="h-8 w-auto" />
             </Link>
           </div>
 
           {/* Center */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            {(user && role === "Admin") ? (
-              <>
-                <Link
-                  to="/admin/console"
-                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-                >
-                  Quản lý người dùng 
-                </Link>
-              </>    
-            ) : (user && (role === "Head" || role === "Staff")) ? (
-              <>
-                <Link
-                  to="/view-applications"
-                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-                >
-                  Quản lý thủ tục 
-                </Link>
-              </>
-             ) : (user) ? (  
+            {user && role === "Admin" && (
+              <Link
+                to="/admin/console"
+                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+              >
+                Quản lý người dùng
+              </Link>
+            )}
+            {user && role === "BCA" && (
+              <Link
+                to="/bca/birth-registrations"
+                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+              >
+                Quản lý giấy khai sinh
+              </Link>
+            )}
+            {user && role === "Police" && (
+              <Link
+                to="/police/unverifyUsers"
+                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+              >
+                Quản lý thông tin người dân
+              </Link>
+            )}
+            {user && (
               <>
                 <Link
                   to="/public-services"
@@ -64,98 +76,71 @@ const Navbar = ({ user, role }) => {
                   Bảo hiểm Y tế
                 </Link>
                 <Link
-                  to="/my-application"
+                  to="/birth-registration"
                   className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
                 >
-                  Tra cứu tình trạng thủ tục
+                  Tra cứu tình trạng thủ tục giấy khai sinh
                 </Link>
-              </>        
-             ) : null}
+              </>
+            )}
           </div>
 
           {/* Right Side */}
-          <div className="hidden md:flex md:items-center md:space-x-2">
-            {!user ? (
+          <div className="relative">
+            {user ? (
+              <>
+                <button
+                  onClick={toggleDropdown}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-md font-medium text-yellow-100 bg-theme-red text-theme-text-nav-hover hover:bg-theme-red-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-white transition-colors"
+                >
+                  <User className="w-5 h-5" /> {/* User icon */}
+                  <ChevronDown className="w-4 h-4" /> {/* Dropdown arrow */}
+                </button>
+                {dropdownOpen && (
+                  <div
+                    className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 w-48 bg-white rounded-md shadow-lg z-10"
+                    onMouseLeave={closeDropdown}
+                  >
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Hồ sơ
+                    </Link>
+                    <Link
+                      to="/account"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Tài khoản
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
               <>
                 <Link
                   to="/login"
                   className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 bg-theme-red text-theme-text-nav-hover hover:bg-theme-red-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-white transition-colors"
                 >
-                  Login
+                  Đăng nhập
                 </Link>
                 <Link
                   to="/register"
                   className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 border border-theme-red hover:bg-theme-red hover:text-theme-text-nav-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
                 >
-                  Register
+                  Đăng ký
                 </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/profile"
-                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:bg-theme-red hover:text-theme-text-nav-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 bg-theme-red text-theme-text-nav-hover hover:bg-theme-red-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-white transition-colors"
-                >
-                  Logout
-                </button>
               </>
             )}
           </div>
-
-          {/* Mobile Menu Button (Optional - for small screens) */}
-          <div className="md:hidden flex items-center">
-            <button
-              // onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-yellow-100 hover:text-theme-red hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-theme-red"
-              aria-controls="mobile-menu"
-              aria-expanded="false" /* Dynamically set this with state */
-            >
-              <span className="sr-only">Open main menu</span>
-              {/* Icon when menu is closed. Heroicon name: menu */}
-              <svg
-                className="block h-6 w-6"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16m-7 6h7"
-                />
-              </svg>
-              {/* Icon when menu is open. Heroicon name: x */}
-              <svg
-                className="hidden h-6 w-6"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
-
-      {/* Mobile menu, show/hide based on menu state (Optional) */}
-      {/* <div className="md:hidden" id="mobile-menu"> ... mobile links here ... </div> */}
     </nav>
   );
 };

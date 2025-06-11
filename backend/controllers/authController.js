@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import BlacklistedToken from '../models/BlacklistedToken.js';
 import { Role } from '../models/Association.js'
 import { validateEmail, validatePassword } from '../utils/validators.js';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService.js';
@@ -143,7 +144,6 @@ export const logout = async (req, res) => {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
         const expiresAt = new Date(decoded.exp * 1000);
-
         await BlacklistedToken.create({
           token: token,
           expires_at: expiresAt

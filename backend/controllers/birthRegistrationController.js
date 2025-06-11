@@ -369,6 +369,7 @@ export const getBirthRegistrationByApplicantId = async (req, res) => {
     const { applicantId } = req.params;
     const userId = req.user.userId;
     const role = req.user.role;
+    console.log("User ID:", userId);
     if (role === "Citizen" && parseInt(userId) !== parseInt(applicantId)) {
       return res.status(403).json({
         success: false,
@@ -381,9 +382,9 @@ export const getBirthRegistrationByApplicantId = async (req, res) => {
     });
 
     if (birthRegistrations.length === 0) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: false,
-        message: "Không tìm thấy đăng ký khai sinh cho người nộp này"
+        message: "Người nộp đơn không có đăng ký khai sinh nào"
       });
     }
 

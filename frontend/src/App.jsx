@@ -1,31 +1,40 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './components/Login';
-import Register from './components/Register';
-import Profile from './components/Profile';
-import CitizenForm from './components/BasicInfo';
-import MedicalCoverage from './components/MedicalCoverage';
+// For context
 import Navbar from './components/NavBar';
 import Banner from './components/Banner';
+import Home from './components/Home';
+
+// For components
+// For auth
+import Login from './components/Login';
+import Register from './components/Register';
+// For personal information
+import Account from './components/Account';
+import Profile from './components/Profile';
+import MyRegistration from './components/BirthRegistrationProf';
+// For services
+import MedicalCoverage from './components/MedicalCoverage';
 import BirthRegistrationForm from './components/BirthRegistrationForm';
 import ServiceList from './components/ServiceList';
-import AdminConsole from './components/UserManagement';
-import { Unauthorized } from './components/UnauthorizedPage';
-import BirthRegistrationDetail from './components/BCABirthRegistrationDetail';
-import BirthRegistrationList from './components/BirthRegistrationList';
-import MyRegistration from './components/BirthRegistrationProf';
-import BCAPendingApplications from './components/BCABirthRegistrations';
+// For Police
 import UnverifiedUsersTable from './components/UnverifiedUsersTable';
-// 4 Defined roles: Admin, Citizen, Staff, Head
+// For BCA
+import BirthRegistrationDetail from './components/BCABirthRegistrationDetail';
+import BCAPendingApplications from './components/BCABirthRegistrations';
+// For Admin
+import AdminConsole from './components/UserManagement';
+// For not found and unauthorized pages
+import NotFound from './components/NotFound';
+import { Unauthorized } from './components/UnauthorizedPage';
+
+// 4 Defined roles: Admin, Citizen, Staff, Head, Police, BCA, SYT
 const AuthorizedRoute = ({ children, required_role }) => {
   const { user, loading, role } = useAuth();
   console.log("AuthorizedRoute", required_role, role);
-  // debugger;
   if (loading) {
     return <div>Loading...</div>;
   }
-  // console.log("FDSFDSFDSFDFDSFDSF");
   if (!user) {
     return <Navigate to="/login" />;
   }
@@ -45,7 +54,6 @@ const AuthorizedRoute = ({ children, required_role }) => {
 
   return children;
 };
-
 
 
 const ProtectedRoute = ({ children }) => {
@@ -71,8 +79,20 @@ const AppContent = () => {
       <Navbar user={user} role={role} />
       <div className="container mx-auto px-4 py-8">
         <Routes>
+          <Route path="/" element={<Navigate to="/home" />} />
+          <Route path="/home" element={<Home />} />
+          {/* Auth */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          {/* Personale Information */}
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <Account />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={
@@ -81,14 +101,19 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/basicinfo"
-            element={
-              <ProtectedRoute>
-                <CitizenForm />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/birth-registration" element={
+            <ProtectedRoute>
+              <MyRegistration></MyRegistration>
+            </ProtectedRoute>
+          } />
+
+          {/* For services */}
+          <Route path="/public-services" element={
+            <ProtectedRoute>
+              <ServiceList />
+            </ProtectedRoute>
+
+          } />
           <Route
             path="/medical-coverage"
             element={
@@ -97,28 +122,20 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/profile" />} />
-          <Route path="/admin/console" element={
-            <AuthorizedRoute required_role="Admin">
-              <AdminConsole />
-            </AuthorizedRoute>
-          }></Route>
           <Route path="/ubnd/dang-ky-khai-sinh" element={
             <ProtectedRoute>
               <BirthRegistrationForm />
             </ProtectedRoute>
           }></Route>
-          <Route path="/public-services" element={
-            <ProtectedRoute>
-              <ServiceList />
-            </ProtectedRoute>
 
-          } />
-          <Route path="/view-applications" element={
-            <AuthorizedRoute required_role={["Head", "Staff", "BCA"]}>
-              <BirthRegistrationList></BirthRegistrationList>
+          {/* For Police */}
+          <Route path="/police/unverifyUsers" element={
+            <AuthorizedRoute required_role="Police">
+              <UnverifiedUsersTable />
             </AuthorizedRoute>
-          } ></Route>
+          } />
+
+          {/* For BCA */}
           <Route path="/bca/birth-registrations" element={
             <AuthorizedRoute required_role="BCA">
               <BCAPendingApplications />
@@ -129,17 +146,21 @@ const AppContent = () => {
               <BirthRegistrationDetail />
             </ProtectedRoute>
           } />
-          <Route path="/my-application" element={
-            <ProtectedRoute>
-              <MyRegistration></MyRegistration>
-            </ProtectedRoute>
-          } />
-          <Route path="/police/unverifyUsers" element={
-            <AuthorizedRoute required_role="Police">
-              <UnverifiedUsersTable />
+
+          {/* For admin */}
+          <Route path="/admin/console" element={
+            <AuthorizedRoute required_role="Admin">
+              <AdminConsole />
             </AuthorizedRoute>
-          } />
+          }></Route>
+
+          {/* For warning Page */}
           <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/not-found" element={<NotFound />} />
+
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/not-found" />} />
+
         </Routes>
       </div>
     </div>

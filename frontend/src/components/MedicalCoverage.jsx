@@ -56,12 +56,11 @@ const MedicalCoverage = () => {
 
     if (!user) {
       navigate('/login');
-      return;
     }
 
     // Default tab settings - both user and admin start with tab 0
     setActiveTab(0);
-    
+
     fetchData();
   }, [user, role, api, authLoading]);
 
@@ -79,7 +78,7 @@ const MedicalCoverage = () => {
       // Both user types need service health data
       const serviceRes = await api.get('/service-health');
       setServices(serviceRes.data || []);
-      
+
       // Fetch Bảo hiểm Y tế
       try {
         // For admin/staff, fetch all coverage
@@ -285,7 +284,7 @@ const MedicalCoverage = () => {
         <Tabs value={activeTab} onChange={handleTabChange}>
           {/* Both users and admins can see Bảo hiểm Y tế tab */}
           <Tab label="Bảo hiểm Y tế" />
-          
+
           {/* Both users and admins can see Available Services tab */}
           <Tab label={isAdmin ? "Service Health Management" : "Available Services"} />
         </Tabs>
@@ -511,7 +510,7 @@ const MedicalCoverage = () => {
 
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>
-          {activeTab === 0 ? 'Thêm bảo hiểm Y tế' : 
+          {activeTab === 0 ? 'Thêm bảo hiểm Y tế' :
             (editingService ? 'Chỉnh sửa dịch vụ sức khỏe' : 'Thêm dịch vụ sức khỏe')}
         </DialogTitle>
         <DialogContent>
