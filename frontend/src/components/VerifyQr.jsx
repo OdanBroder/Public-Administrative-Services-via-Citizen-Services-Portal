@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Upload, FileCheck, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const VerifySignature = () => {
     const [certificateSignature, setCertificateSignature] = useState(null);
@@ -9,6 +10,7 @@ const VerifySignature = () => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const { api } = useAuth();
 
     const handleCertificateUpload = (e) => {
         const file = e.target.files[0];
@@ -53,22 +55,45 @@ const VerifySignature = () => {
 
         setIsLoading(true);
 
-        const formData = new FormData();
-        formData.append('certificateSignature', certificateSignature);
-        formData.append('personSignature', personSignature);
-
         try {
-            // Simulated API call - replace with actual API
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Convert the uploaded files to base64
+            const certificateReader = new FileReader();
+            const personReader = new FileReader();
 
-            // Mock response - replace with actual API call
-            const mockSuccess = Math.random() > 0.3;
+            certificateReader.onload = async (e) => {
+                const certificateBase64 = e.target.result.split(',')[1]; // Extract base64 data
+                personReader.onload = async (e) => {
+                    const personBase64 = e.target.result.split(',')[1]; // Extract base64 data
 
-            if (mockSuccess) {
-                setSuccessMessage('Xác minh thành công! Chữ ký khớp với nhau.');
-            } else {
-                setError('Xác minh thất bại. Chữ ký không khớp.');
-            }
+                    const isValidcertificateReader = await api.post('/qr/verify', { certificateBase64 });
+
+                    if (isValidcertificateReader.data.status !== 'success') {
+                        setError(isValidcertificateReader.data.message || 'Xác minh chữ ký trên chứng chỉ thất bại.');
+                        setIsLoading(false);
+                        return;
+                    }
+                    const isValidPersonReader = await api.post('/qr/verify', { personBase64 });
+                    if (isValidPersonReader.data.status !== 'success') {
+                        setError(isValidPersonReader.data.message || 'Xác minh chữ ký của người ký thất bại.');
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    // Combine the base64 data into a single field
+                    const qrCodeImageBase64 = `${certificateBase64}##${personBase64}`;
+
+                    // Send the combined data to the backend
+                    const response = await api.post('/qr/verify', { qrCodeImageBase64 });
+
+                    if (response.data.status === 'success') {
+                        setSuccessMessage(response.data.message);
+                    } else {
+                        setError(response.data.message || 'Xác minh thất bại.');
+                    }
+                };
+                personReader.readAsDataURL(personSignature);
+            };
+            certificateReader.readAsDataURL(certificateSignature);
         } catch (err) {
             setError('Đã xảy ra lỗi khi xác minh. Vui lòng thử lại.');
         } finally {
