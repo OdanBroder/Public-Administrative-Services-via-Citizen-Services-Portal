@@ -35,4 +35,5 @@ Service.belongsTo(Office, { foreignKey: 'office_id', as: 'office' });
 User.hasMany(BirthRegistration, { foreignKey: 'applicant_id', as: 'birthRegistrations' });
 BirthRegistration.belongsTo(User, { foreignKey: 'applicant_id', as: 'applicant' });
 
+
 export {User, Office, Role, Permission, RolePermission};

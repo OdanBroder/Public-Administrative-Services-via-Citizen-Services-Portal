@@ -121,13 +121,7 @@ export const approveApplication = async (req, res) => {
     const { birthRegistrationId } = req.params;
     const bcaId = req.user.userId;
 
-    const application = await BirthRegistration.findByPk(birthRegistrationId, {
-      include: [{
-        model: FilePath,
-        as: 'filePath',
-        attributes: ['application']
-      }]
-    });
+    const application = await BirthRegistration.findByPk(birthRegistrationId);
 
     if (!application) {
       return res.status(404).json({
@@ -156,8 +150,7 @@ export const approveApplication = async (req, res) => {
     }
 
     // Construct application file path
-    const applicationPath = path.join(application.filePath.application, applicationId.toString());
-
+    const applicationPath =  application.file_path 
     // Verify all required files exist
     const requiredFiles = [
       bcaFilePath.private_key,
