@@ -137,7 +137,10 @@ const AdminConsole = () => {
       'Admin': 1,
       'Citizen': 2,
       'Staff': 3,
-      'Head': 4
+      'Head': 4,
+      'Police': 5,
+      'BCA': 6,
+      'SYT': 7
     };
     return roleMap[roleName] || 1;
   };
