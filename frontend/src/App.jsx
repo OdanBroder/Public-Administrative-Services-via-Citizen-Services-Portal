@@ -24,6 +24,10 @@ import BirthRegistrationDetail from './components/BCABirthRegistrationDetail';
 import BCAPendingApplications from './components/BCABirthRegistrations';
 // For Admin
 import AdminConsole from './components/UserManagement';
+
+// For verification
+import VerifyQr from './components/VerifyQr'; // Uncomment if you need this component
+
 // For not found and unauthorized pages
 import NotFound from './components/NotFound';
 import { Unauthorized } from './components/UnauthorizedPage';
@@ -145,6 +149,12 @@ const AppContent = () => {
             <ProtectedRoute>
               <BirthRegistrationDetail />
             </ProtectedRoute>
+          } />
+
+          {/* For verify */}
+          <Route path="/verify-qr" element={
+            // Public route, no auth required
+              <VerifyQr />
           } />
 
           {/* For admin */}
