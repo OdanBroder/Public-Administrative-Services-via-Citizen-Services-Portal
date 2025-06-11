@@ -115,7 +115,7 @@ export const createCitizen = async (req, res) => {
       }
     const uploadDir = "uploads/";
     if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
+      await fs.promises.mkdir(uploadDir);
     }
 
     const hinhAnhCCCDTruocFile = req.files.hinhAnhCCCDTruoc[0];

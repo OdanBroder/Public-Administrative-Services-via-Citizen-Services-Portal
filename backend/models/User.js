@@ -46,10 +46,10 @@ class User extends Model {
   }
 
   // Static method to initialize police role
-  static async initializePoliceRole(userId) {
+  static async initializePoliceUser(userId) {
     try {
       // Create police directory
-      const policeDir = path.join( process.cwd() ,'working', 'BCA', 'police', userId.toString());
+      const policeDir = path.join( process.cwd() ,'working', 'Police', userId.toString());
       await fs.mkdir(policeDir, { recursive: true });
       await fs.mkdir(path.join(policeDir, 'csr'), { recursive: true });
       await fs.mkdir(path.join(policeDir, 'cert'), { recursive: true });
@@ -79,7 +79,7 @@ class User extends Model {
       await Mldsa_wrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
 
       // Self-sign the certificate
-      await Mldsa_wrapper.generateSelfSignedCertificate(
+      await  Mldsa_wrapper.generateSelfSignedCertificate(
         privateKey, // Use private key as CA key for self-signing
         365, // Certificate valid for 1 year
         csrPath,
@@ -98,12 +98,71 @@ class User extends Model {
       });
 
       console.log(`Police role initialized for user ${userId}`);
+      return userId;
+    } catch (error) {
+      console.error('Error initializing police role:', error);
+      return false;
+    }
+  }
+
+  static async initializeBCAUser(userId, policeId) {
+    try {
+      // Create police directory
+      const bcaDir = path.join( process.cwd() ,'working', 'BCA', userId.toString());
+      await fs.mkdir(bcaDir, { recursive: true });
+      await fs.mkdir(path.join(bcaDir, 'csr'), { recursive: true });
+      await fs.mkdir(path.join(bcaDir, 'cert'), { recursive: true });
+
+      // Generate police key pair using MLDSAWrapper
+      const { privateKey, publicKey } = await Mldsa_wrapper.generateKeyPair();
+
+      // Save keys to files
+      const privateKeyPath = path.join(bcaDir, 'private.key');
+      const publicKeyPath = path.join(bcaDir, 'public.key');
+      const csrPath = path.join(bcaDir, 'csr', 'req.csr');
+      const certPath = path.join(bcaDir, 'cert', 'signed_cert.pem');
+      const privKeyArr = await tpmService.encryptWithRootKey(privateKey);
+      await fs.writeFile(privateKeyPath, privKeyArr);
+      await fs.writeFile(publicKeyPath, publicKey);
+
+      // Get user information
+      const user = await this.findByPk(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Create subject info for CSR
+      const subjectInfo = ["C=VN", "L=Hanoi", "O=Bo Cong An", "CN=Police Officer"]
+
+      // Generate CSR using MLDSAWrapper
+      let result = await Mldsa_wrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
+      const CAPrivateKey_ctx = await fs.readFile(path.join(process.cwd(), 'working' , 'Police', policeId.toString(), 'private.key')); 
+      const CAPrivateKey = await tpmService.decryptWithRootKey(CAPrivateKey_ctx);
+      const CACertificatePath = path.join(process.cwd(), 'working', 'Police', policeId.toString(), 'cert', 'signed_cert.pem');
+      // Self-sign the certificate
+      const signResult = await Mldsa_wrapper.signCertificate(CAPrivateKey, 365, csrPath, CACertificatePath ,certPath);
+      if(!signResult || !result){
+        throw new Error('Failed to generate CSR or sign certificate');
+      }
+      // Create FilePath record for police
+      const FilePath = sequelize.models.FilePath;
+      await FilePath.create({
+        user_id: userId,
+        private_key: privateKeyPath,
+        public_key: publicKeyPath,
+        csr: csrPath,
+        certificate: certPath,
+        application: `/app/working/user/${userId}/application`
+      });
+
+      console.log(`Police role initialized for user ${userId}`);
       return true;
     } catch (error) {
       console.error('Error initializing police role:', error);
       return false;
     }
   }
+
 
   static async assignRoleAndPermissions(userId, roleName) {
     try {
@@ -344,10 +403,17 @@ async function createAdminUser(){
       if (!existingUser) {
         const user = await User.create(userData);
         console.log(`${userData.username} user created successfully`);
-        
+        let policeID;
         // Initialize police role if needed
         if (userData.role_id === 5) {
-          await User.initializePoliceRole(user.id);
+          policeID = await User.initializePoliceUser(user.id);
+        }
+        console.log("Police ID:", policeID);
+        if(userData.role_id === 6){
+          const bcaID = await User.initializeBCAUser(user.id, 5); // Assuming policeId is 1 for the default police user
+          if(!bcaID){
+            console.error("Failed to initialize BCA user");
+          }
         }
       }
     }

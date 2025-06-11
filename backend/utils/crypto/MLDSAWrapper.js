@@ -92,14 +92,16 @@ class MLDSAWrapper {
     }
   }
 
-  async ensureDirForFilePath(filePath) {
-  const dirPath = path.dirname(filePath);
-
+/**
+ * Ensures that the directory for a given file path exists in the virtual FS.
+ * @param {string} filePath - The file path to check.
+ */
+  ensureDirForFilePath(filePath) {
+    const dirPath = path.dirname(filePath);
     if (!this.FS.analyzePath(dirPath).exists) {
-      this.FS.mkdirSync(dirPath, { recursive: true });
+      this.FS.mkdir(dirPath, { recursive: true });
     }
   }
-
   /**
    * Allocates memory in the WASM heap and copies a string into it.
    * @private
@@ -528,7 +530,6 @@ class MLDSAWrapper {
         signedCertPath,
         days
       );
-      
       if (!result) {
         throw new Error("Certificate signing failed");
       }

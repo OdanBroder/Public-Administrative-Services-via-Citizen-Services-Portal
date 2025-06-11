@@ -175,7 +175,7 @@ export const approveApplication = async (req, res) => {
     );
 
     // Create signature directory if it doesn't exist
-    const signatureDir = path.join(applicationPath, 'signatures');
+    const signatureDir = path.join(applicationPath, 'sig');
     await fs.mkdir(signatureDir, { recursive: true });
 
     const sigFile = path.join(applicationPath, 'sig', 'signature.bin');   // signature that backend sign in application
@@ -184,16 +184,18 @@ export const approveApplication = async (req, res) => {
       signature: sigData,
       time: Date.now()
     };
-
+    const messagePath = path.join(applicationPath, "message", "issuer_message.txt");
     // Sign the application
-    const signaturePath = path.join(signatureDir, 'bca_signature.sig');
+    const signaturePath = path.join(signatureDir, 'issuer_signature.sig');
     const signed = await Mldsa_wrapper.sign(
       bcaPrivateKey,
       JSON.stringify(message),
       signaturePath
-    );
+    );message
+    await fs.writeFile(messagePath, JSON.stringify(message));
+    
 
-    if (!signed) {
+    if (!signed ) {
       throw new Error('Không thể ký đơn đăng ký');
     }
 
