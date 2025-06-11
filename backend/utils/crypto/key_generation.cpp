@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <openssl/x509v3.h>
 using BIO_ptr = ossl_unique_ptr<BIO, BIO_free_all>;
 using EVP_PKEY_ptr = ossl_unique_ptr<EVP_PKEY, EVP_PKEY_free>;
 using EVP_PKEY_CTX_ptr = ossl_unique_ptr<EVP_PKEY_CTX, EVP_PKEY_CTX_free>;

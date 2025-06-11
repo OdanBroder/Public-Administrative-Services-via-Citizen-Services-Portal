@@ -162,3 +162,87 @@ bool verify_signature_with_cert(const char *certificate_path_chr, const char *si
 
     return result;
 }
+
+bool verify_certificate_issued_by_ca(const char* CertPath, const char* CACertPath) {
+    // Read certificate file into memory
+    std::ifstream cert_file(CertPath, std::ios::binary);
+    if (!cert_file) {
+        std::cerr << "Failed to open certificate file: " << CertPath << std::endl;
+        return false;
+    }
+    std::string cert_pem((std::istreambuf_iterator<char>(cert_file)), std::istreambuf_iterator<char>());
+
+    // Read CA certificate file into memory
+    std::ifstream ca_file(CACertPath, std::ios::binary);
+    if (!ca_file) {
+        std::cerr << "Failed to open CA certificate file: " << CACertPath << std::endl;
+        return false;
+    }
+    std::string ca_pem((std::istreambuf_iterator<char>(ca_file)), std::istreambuf_iterator<char>());
+
+    // Create BIOs from memory
+    BIO_ptr cert_bio(BIO_new_mem_buf(cert_pem.data(), static_cast<int>(cert_pem.size())), BIO_free_all);
+    BIO_ptr ca_bio(BIO_new_mem_buf(ca_pem.data(), static_cast<int>(ca_pem.size())), BIO_free_all);
+    if (!cert_bio || !ca_bio) {
+        handle_openssl_error("BIO_new_mem_buf for certificate or CA");
+        return false;
+    }
+
+    // Load X509 structures
+    X509* cert = PEM_read_bio_X509(cert_bio.get(), nullptr, nullptr, nullptr);
+    X509* ca_cert = PEM_read_bio_X509(ca_bio.get(), nullptr, nullptr, nullptr);
+    if (!cert || !ca_cert) {
+        handle_openssl_error("PEM_read_bio_X509 for certificate or CA");
+        if (cert) X509_free(cert);
+        if (ca_cert) X509_free(ca_cert);
+        return false;
+    }
+
+    // Create X509_STORE and add CA cert
+    X509_STORE* store = X509_STORE_new();
+    if (!store) {
+        handle_openssl_error("X509_STORE_new");
+        X509_free(cert);
+        X509_free(ca_cert);
+        return false;
+    }
+    if (X509_STORE_add_cert(store, ca_cert) != 1) {
+        handle_openssl_error("X509_STORE_add_cert");
+        X509_STORE_free(store);
+        X509_free(cert);
+        X509_free(ca_cert);
+        return false;
+    }
+
+    // Create X509_STORE_CTX for verification
+    X509_STORE_CTX* ctx = X509_STORE_CTX_new();
+    if (!ctx) {
+        handle_openssl_error("X509_STORE_CTX_new");
+        X509_STORE_free(store);
+        X509_free(cert);
+        X509_free(ca_cert);
+        return false;
+    }
+
+    bool result = false;
+    if (X509_STORE_CTX_init(ctx, store, cert, nullptr) == 1) {
+        int verify_result = X509_verify_cert(ctx);
+        result = (verify_result == 1);
+        if (!result) {
+            handle_openssl_error("X509_verify_cert by CA");
+            // Optionally print error
+            int err = X509_STORE_CTX_get_error(ctx);
+            std::cerr << "Certificate verification failed: " << X509_verify_cert_error_string(err) << std::endl;
+        }
+    } else {
+        handle_openssl_error("X509_STORE_CTX_init");
+    }
+
+    // Cleanup
+    X509_STORE_CTX_free(ctx);
+    X509_STORE_free(store);
+    X509_free(cert);
+    X509_free(ca_cert);
+
+    return result;
+}

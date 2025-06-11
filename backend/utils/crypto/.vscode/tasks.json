@@ -15,7 +15,7 @@
         "-s", "WASM=1",
         "-s", "MODULARIZE=1",
         "-s", "EXPORT_NAME=createOQSModule",
-        "-s", "\"EXPORTED_FUNCTIONS=['_generate_mldsa65_keypair', '_generate_csr', '_malloc' ,'_generate_self_signed_certificate', '_sign_mldsa65' , '_verify_mldsa65', '_verify_signature_with_cert', '_free']\"",
+        "-s", "\"EXPORTED_FUNCTIONS=['_generate_mldsa65_keypair', '_generate_csr', '_malloc' ,'_generate_self_signed_certificate', '_sign_mldsa65' , '_verify_mldsa65', '_verify_signature_with_cert', '_verify_certificate_issued_by_ca' , '_free']\"",
         "-s", "EXPORTED_RUNTIME_METHODS=\"['FS', 'NODEFS', 'ccall','cwrap','getValue','setValue','stringToUTF8','UTF8ToString']\"",
         "-s", "ALLOW_MEMORY_GROWTH=1",
         "-s", "ASSERTIONS=1",

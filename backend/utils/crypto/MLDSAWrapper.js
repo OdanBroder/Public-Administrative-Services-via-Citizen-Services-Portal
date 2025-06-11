@@ -79,6 +79,7 @@ class MLDSAWrapper {
     this._verify_mldsa65 = this.cwrap('verify_mldsa65', 'number', ['number', 'string', 'number', 'number']);
     this._verify_signature_with_cert = this.cwrap('verify_signature_with_cert', 'number', ['string', 'string', 'number', 'number']);
     this._sign_certificate = this.cwrap('sign_certificate', 'number', ['string', 'string', 'number', 'number', 'string', 'number']);
+    this._verify_certificate_issued_by_ca = this.cwrap('verify_certificate_issued_by_ca', 'number', ['string', 'string']);
   }
 
   /**
@@ -345,6 +346,26 @@ class MLDSAWrapper {
   }
 
   /**
+   * Verifies if a certificate has been issued by a given CA certificate.
+   * @param {string} certPath - Virtual FS path to the certificate to verify
+   * @param {string} caCertPath - Virtual FS path to the CA certificate
+   * @returns {Promise<boolean>} True if the certificate is issued by the given CA, false otherwise
+   * @throws {Error} If verification process fails
+   */
+  async verifyCertificateIssuedByCA(certPath, caCertPath) {
+    this._ensureInitialized();
+    // Ensure files exist in the virtual FS
+    if (!this.FS.analyzePath(certPath).exists) {
+      throw new Error(`Certificate file not found in virtual FS: ${certPath}`);
+    }
+    if (!this.FS.analyzePath(caCertPath).exists) {
+      throw new Error(`CA certificate file not found in virtual FS: ${caCertPath}`);
+    }
+    const result = this._verify_certificate_issued_by_ca(certPath, caCertPath);
+    return !!result;
+  }
+
+  /**
    * Signs a message using ML-DSA-65.
    * @param {Uint8Array} privateKey - The private key as a byte array
    * @param {string|Uint8Array} message - The message to sign
@@ -495,6 +516,8 @@ class MLDSAWrapper {
       if (messagePtr) this.free(messagePtr);
     }
   }
+
+
 
   /**
    * Signs a certificate with a CA certificate and private key.

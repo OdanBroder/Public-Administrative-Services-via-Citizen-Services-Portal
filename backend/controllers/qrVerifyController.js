@@ -6,6 +6,8 @@ import tpmService from "../utils/crypto/tpmController";
 import path from "path";
 import Mldsa_wrapper from "../utils/crypto/MLDSAWrapper";
 import crypto from "crypto";
+import Jimp from "jimp";
+import QrCode from "qrcode-reader";
 import { readFile, stat } from "fs";
 export const getApplicantQrSignature = async (req,res) => {
   const { id } = req.params; // application id
@@ -117,9 +119,22 @@ export const verifyQrSignature = async (req, res) => {
     // Decode the base64 image data to a BufferArray
     const decodedBuffer = Buffer.from(qrCodeImageBase64, "base64");
 
-    // For now, we'll just return the decoded buffer as a string for demonstration.
-    // In a real scenario, you would use a QR code decoding library here.
-    const decodedData = decodedBuffer.toString();
+    const image = await Jimp.read(imageBuffer);
+    
+    // Create QR code reader instance
+    const qr = new QrCode();
+    
+    // Decode QR code from image
+    const decodedData = await new Promise((resolve, reject) => {
+      qr.callback = function (err, value) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(value.result);
+        }
+      };
+      qr.decode(image.bitmap);
+    });
 
     // Call the placeholder verify function
     const parts = decodedData.split("##");

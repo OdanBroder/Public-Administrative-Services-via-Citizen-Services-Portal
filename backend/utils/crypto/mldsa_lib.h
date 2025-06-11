@@ -116,7 +116,7 @@ EXPOSE_WASM bool generate_csr(char* private_key_chr, char *public_key_char, char
  */
 EXPOSE_WASM bool generate_self_signed_certificate(char* csr_path, char* private_key_chr, char* certificate_path, int days);
 // --- Signing ---
-
+EXPOSE_WASM bool verify_certificate_issued_by_ca(const char* CertPath, const char* CACertPath);
 /**
  * @brief Sign a message using MLDSA 
   * @param private_key  The private key buffer.
