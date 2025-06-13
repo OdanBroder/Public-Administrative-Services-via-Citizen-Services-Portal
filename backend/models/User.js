@@ -118,11 +118,6 @@ User.init({
     type: DataTypes.STRING,
     allowNull: false
   },
-  // REMOVED: Old role ENUM field
-  // role: {
-  //   type: DataTypes.ENUM('user', 'admin'),
-  //   defaultValue: 'user'
-  // },
   role_id: { // ADDED: Foreign key for Role
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false, // Allow null initially or for users without roles?

@@ -1,8 +1,8 @@
 import User from '../models/User.js';
 import FilePath from '../models/FilePath.js';
-import  mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
+import mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
 import tpmService from '../utils/crypto/tpmController.js';
 
 export const getUnverifiedUsers = async (req, res) => {
@@ -10,7 +10,43 @@ export const getUnverifiedUsers = async (req, res) => {
     const unverifiedUsers = await User.findAll({
       where: {
         is_verified: false,
-        complete_profile: true
+        complete_profile: true,
+        role_id: 2 // Assuming role_id 2 is for citizens
+      },
+      attributes: ['id', 'username', 'email', 'first_name', 'last_name'],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy danh sách người dùng chưa xác thực thành công",
+      data: unverifiedUsers
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách người dùng chưa xác thực:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+};
+
+export const getUnverifiedUsersbyId = async (req, res) => {
+  const { userId } = req.params;
+  if (isNaN(userId)) {
+    return res.status(400).json({
+      success: false,
+      message: "ID người dùng không hợp lệ"
+    });
+  }
+
+  try {
+    const unverifiedUsers = await User.findAll({
+      where: {
+        is_verified: false,
+        complete_profile: true,
+        id: userId,
+        role_id: 2 // Assuming role_id 2 is for citizens
       },
       attributes: ['id', 'username', 'email', 'first_name', 'last_name'],
       include: [{
@@ -36,15 +72,15 @@ export const getUnverifiedUsers = async (req, res) => {
 
         // Verify files exist before reading
         const filesExist = await Promise.all([
-          fs.access(user.FilePath.csr).then(() => true).catch(() => false)
+          fs.promises.access(user.FilePath.csr).then(() => true).catch(() => false)
         ]);
 
         if (filesExist.some(exists => !exists)) {
           throw new Error('Một hoặc nhiều file khóa không tồn tại');
         }
 
-        const csrContent = await fs.readFile(user.FilePath.csr, 'utf8');
-        
+        const csrContent = await fs.promises.readFile(user.FilePath.csr, 'utf8');
+
         return {
           ...user.toJSON(),
           csr_content: csrContent
@@ -77,6 +113,99 @@ export const getUnverifiedUsers = async (req, res) => {
     });
   }
 };
+
+export const submitCertificateRequest = async (req, res) => {
+  try {
+    const policeId = req.user.userId;
+    const policeFilePath = await FilePath.findOne({
+      where: { user_id: policeId }
+    });
+    if (policeFilePath.certificate) {
+      return res.status(400).json({
+        success: false,
+        message: "Công an đã có chứng chỉ, không thể gửi yêu cầu"
+      });
+    }
+
+    let csr = null;
+    let certificate = null;
+    // Check if CSR file is provided
+    if (req.files.csr && req.files.csr[0]) {
+
+      const csrFile = req.files.csr[0];
+      // Convert buffer to UTF-8 string
+      csr = csrFile.buffer.toString('utf8');
+
+      // Validate CSR format
+      if (!csr.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
+        !csr.includes('-----END CERTIFICATE REQUEST-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "CSR format không hợp lệ. Vui lòng cung cấp file CSR đúng định dạng PEM."
+        });
+      }
+    }
+
+    if (!csr) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp CSR (Certificate Signing Request)"
+      });
+    }
+
+    // Check if Certificate file is provided
+    if (req.files.csr && req.files.certificate[0]) {
+
+      const certificateFile = req.files.certificate[0];
+      // Convert buffer to UTF-8 string
+      certificate = certificateFile.buffer.toString('utf8');
+
+      // Validate certificate format
+      if (!certificate.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
+        !certificate.includes('-----END CERTIFICATE REQUEST-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "Certificate format không hợp lệ. Vui lòng cung cấp file certificate đúng định dạng PEM."
+        });
+      }
+    }
+
+    if (!certificate) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp Certificate (Certificate Signing Request)"
+      });
+    }
+
+    const certDir = path.join(process.cwd(), '/working', 'police', policeId.toString(), 'cert');
+
+    // Create directory if it doesn't exist
+    await fs.promises.mkdir(certDir, { recursive: true });
+
+    // Define paths for police's CSR and certificate
+    const csrPath = path.join(certDir, 'police_csr.pem');
+    const certificatePath = path.join(certDir, 'police_certificate.pem');
+
+    // Write CSR and certificate to files
+    await fs.promises.writeFile(csrPath, csr);
+    await fs.promises.writeFile(certificatePath, certificate);
+
+    // Update police's file paths in the database
+    await FilePath.upsert({
+      user_id: policeId,
+      csr: csrPath,
+      certificate: certificatePath
+    });
+
+  } catch (error) {
+    console.error("Lỗi khi gửi yêu cầu chứng chỉ:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+}
 
 export const signUserCertificate = async (req, res) => {
   try {
@@ -116,6 +245,13 @@ export const signUserCertificate = async (req, res) => {
       });
     }
 
+    if (!userFilePath.csr) {
+      return res.status(400).json({
+        success: false,
+        message: "Người dùng chưa có CSR để ký chứng chỉ"
+      });
+    }
+
     // Check if user already has a certificate
     if (userFilePath.certificate) {
       return res.status(400).json({
@@ -124,51 +260,50 @@ export const signUserCertificate = async (req, res) => {
       });
     }
 
-    // Verify all required files exist
-    const requiredFiles = [
-      policeFilePath.private_key,
-      policeFilePath.certificate,
-      userFilePath.csr
-    ];
+    const caCertpath = policeFilePath.certificate;
+    // Read CA certificate
+    const caCert = await fs.promises.readFile(caCertpath, 'utf8');
+    
+    let userCert = null;
 
-    const filesExist = await Promise.all(
-      requiredFiles.map(file => fs.access(file).then(() => true).catch(() => false))
-    );
+    if (req.files.userCert && req.files.userCert[0]) {
 
-    if (filesExist.some(exists => !exists)) {
+      const userCertFile = req.files.caCert[0];
+      // Convert buffer to UTF-8 string
+      userCert = userCertFile.buffer.toString('utf8');
+
+      // Validate CSR format
+      if (!userCert.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
+        !userCert.includes('-----END CERTIFICATE REQUEST-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "Certificate format của người dân không hợp lệ. Vui lòng cung cấp file certificate đúng định dạng PEM."
+        });
+      }
+    }
+
+    if (!userCert) {
       return res.status(400).json({
         success: false,
-        message: "Một hoặc nhiều file cần thiết không tồn tại"
+        message: "Vui lòng cung cấp certificate của người dân"
       });
     }
-    
-    // Read police's private key and certificate
-    const policePrivateKey = await tpmService.decryptWithRootKey(
-      await fs.readFile(policeFilePath.private_key, 'utf8')
-    );
 
-    // Get user's cert directory from FilePath
-    const userCertDir = path.dirname(userFilePath.private_key);
-    await fs.mkdir(userCertDir, { recursive: true });
-
-    // Define paths for user's certificate
-    const userCertPath = path.join(userCertDir, 'signed_cert.pem');
-
-    // Sign the user's CSR using police's private key and certificate
-    const signed = await mldsa_wrapper.signCertificate(
-      policePrivateKey,  // Police's private key as CA key
-      365,               // Certificate valid for 1 year
-      userFilePath.csr,  // User's CSR path
-      policeFilePath.certificate, // Police's certificate as CA cert
-      userCertPath       // Path to save signed certificate
-    );
+    const signed = await mldsa_wrapper.verifyCertificateIssuedByCA(userCert, caCert);
 
     if (!signed) {
       throw new Error('Không thể ký chứng chỉ');
     }
 
+    // Define paths for user's signed certificate
+    const userCertPath = path.join(process.cwd(), '/working', 'user', userId, 'cert', 'user_cert.pem');
+    // Create directory if it doesn't exist
+    await fs.promises.mkdir(path.dirname(userCertPath), { recursive: true });
+    // Write the signed certificate to file
+    await fs.promises.writeFile(userCertPath, userCert);
+
     // Verify the signed certificate exists
-    const certExists = await fs.access(userCertPath).then(() => true).catch(() => false);
+    const certExists = await fs.promises.access(userCertPath).then(() => true).catch(() => false);
     if (!certExists) {
       throw new Error('Chứng chỉ không được tạo thành công');
     }
@@ -199,4 +334,4 @@ export const signUserCertificate = async (req, res) => {
       error: error.message
     });
   }
-}; 
+};

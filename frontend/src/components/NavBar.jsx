@@ -37,30 +37,6 @@ const Navbar = ({ user, role }) => {
 
           {/* Center */}
           <div className="hidden md:flex md:items-center md:space-x-4">
-            {user && role === "Admin" && (
-              <Link
-                to="/admin/console"
-                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-              >
-                Quản lý người dùng
-              </Link>
-            )}
-            {user && role === "BCA" && (
-              <Link
-                to="/bca/birth-registrations"
-                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-              >
-                Quản lý giấy khai sinh
-              </Link>
-            )}
-            {user && role === "Police" && (
-              <Link
-                to="/police/unverifyUsers"
-                className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-              >
-                Quản lý thông tin người dân
-              </Link>
-            )}
             {user && (
               <>
                 <Link
@@ -68,6 +44,12 @@ const Navbar = ({ user, role }) => {
                   className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
                 >
                   Thủ tục trực tuyến
+                </Link>
+                <Link
+                  to="/birth-registration"
+                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
+                >
+                  Tra cứu tình trạng thủ tục giấy khai sinh
                 </Link>
                 <Link
                   to="/medical-coverage"
@@ -112,6 +94,12 @@ const Navbar = ({ user, role }) => {
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Tài khoản
+                    </Link>
+                    <Link
+                      to="/generate-keys"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Tạo khóa
                     </Link>
                     <button
                       onClick={handleLogout}

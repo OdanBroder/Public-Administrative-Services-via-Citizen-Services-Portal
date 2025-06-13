@@ -19,13 +19,6 @@ import MyRegistration from './components/BirthRegistrationProf';
 import MedicalCoverage from './components/MedicalCoverage';
 import BirthRegistrationForm from './components/BirthRegistrationForm';
 import ServiceList from './components/ServiceList';
-// For Police
-import UnverifiedUsersTable from './components/UnverifiedUsersTable';
-// For BCA
-import BirthRegistrationDetail from './components/BCABirthRegistrationDetail';
-import BCAPendingApplications from './components/BCABirthRegistrations';
-// For Admin
-import AdminConsole from './components/UserManagement';
 
 // For verification
 import VerifyQr from './components/VerifyQr'; // Uncomment if you need this component
@@ -79,7 +72,8 @@ const ProtectedRoute = ({ children }) => {
 
 const AppContent = () => {
   const { user, role } = useAuth();
-  const excludedRoutes = ['/verify-qr', '/generate-keys'];
+  // const excludedRoutes = ['/verify-qr', '/generate-keys'];
+  const excludedRoutes = [];
   const isExcludedRoute = excludedRoutes.includes(location.pathname);
   console.log(location);
 
@@ -142,24 +136,6 @@ const AppContent = () => {
             </ProtectedRoute>
           }></Route>
 
-          {/* For Police */}
-          <Route path="/police/unverifyUsers" element={
-            <AuthorizedRoute required_role="Police">
-              <UnverifiedUsersTable />
-            </AuthorizedRoute>
-          } />
-
-          {/* For BCA */}
-          <Route path="/bca/birth-registrations" element={
-            <AuthorizedRoute required_role="BCA">
-              <BCAPendingApplications />
-            </AuthorizedRoute>
-          } />
-          <Route path="/bca/birth-registration/:id" element={
-            <ProtectedRoute>
-              <BirthRegistrationDetail />
-            </ProtectedRoute>
-          } />
 
           {/* For verify */}
           <Route path="/verify-qr" element={
@@ -168,15 +144,7 @@ const AppContent = () => {
           } />
           <Route path="/generate-keys" element={
             <KeyGenerator />
-            // <div>HEHEHE</div>
           } />
-
-          {/* For admin */}
-          <Route path="/admin/console" element={
-            <AuthorizedRoute required_role="Admin">
-              <AdminConsole />
-            </AuthorizedRoute>
-          }></Route>
 
           {/* For warning Page */}
           <Route path="/unauthorized" element={<Unauthorized />} />

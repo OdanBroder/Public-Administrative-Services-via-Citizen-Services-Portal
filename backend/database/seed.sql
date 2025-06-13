@@ -22,6 +22,7 @@ INSERT INTO Roles (name, description) VALUES
 INSERT INTO Permissions (name, description) VALUES 
 ('manage_users', 'Có thể quản lý tài khoản người dùng'),
 ('assign_roles', 'Có thể phân quyền cho người dùng'),
+('submit_certificate', 'Có thể nộp chứng chỉ'),
 ('submit_request', 'Có thể gửi yêu cầu dịch vụ'),
 ('view_own_request', 'Có thể xem yêu cầu của bản thân'),
 ('process_request', 'Có thể xử lý yêu cầu dịch vụ'),
@@ -65,6 +66,7 @@ INSERT INTO RolePermissions (role_id, permission_id) VALUES
 -- Police permissions
 INSERT INTO RolePermissions (role_id, permission_id) VALUES
 ((SELECT id FROM Roles WHERE name = 'Police'), (SELECT id FROM Permissions WHERE name = 'view_unverified_users')),
+((SELECT id FROM Roles WHERE name = 'Police'), (SELECT id FROM Permissions WHERE name = 'submit_certificate')),
 ((SELECT id FROM Roles WHERE name = 'Police'), (SELECT id FROM Permissions WHERE name = 'sign_certificate')),
 ((SELECT id FROM Roles WHERE name = 'Police'), (SELECT id FROM Permissions WHERE name = 'verify_user')),
 ((SELECT id FROM Roles WHERE name = 'Police'), (SELECT id FROM Permissions WHERE name = 'view_own_request')),
@@ -74,6 +76,7 @@ INSERT INTO RolePermissions (role_id, permission_id) VALUES
 -- BCA permissions
 INSERT INTO RolePermissions (role_id, permission_id) VALUES
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'view_bca_applications')),
+((SELECT id FROM Roles WHERE name = 'Police'), (SELECT id FROM Permissions WHERE name = 'submit_certificate')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'process_bca_applications')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'manage_applications')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'process_request'));

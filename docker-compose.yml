@@ -82,6 +82,54 @@ services:
     networks:
       - app-network
 
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    container_name: citizen-services-frontend-admin
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: ${NODE_ENV}
+    volumes:
+      # - ./frontend:/app
+      - frontend-admin_node_modules:/app/node_modules
+    networks:
+      - app-network
+
+  frontend-bca:
+    build:
+      context: ./frontend-bca
+      dockerfile: Dockerfile
+    container_name: citizen-services-frontend-bca
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: ${NODE_ENV}
+    volumes:
+      # - ./frontend:/app
+      - frontend-bca_node_modules:/app/node_modules
+    networks:
+      - app-network
+
+  frontend-police:
+    build:
+      context: ./frontend-police
+      dockerfile: Dockerfile
+    container_name: citizen-services-frontend-police
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: ${NODE_ENV}
+    volumes:
+      # - ./frontend:/app
+      - frontend-police_node_modules:/app/node_modules
+    networks:
+      - app-network
+
   nginx:
     build:
       context: ./frontend
@@ -102,6 +150,67 @@ services:
       - backend
     networks:
       - app-network
+  nginx-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile.nginx
+    container_name: citizen-services-nginx-admin
+    restart: always
+    ports:
+      - "8001:80"
+      - "44301:443"
+    volumes:
+      - ./frontend-admin/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend-admin/dist:/usr/share/nginx/html
+      - ./certificate.crt:/etc/nginx/certs/certificate.crt
+      - ./ec-private-key.pem:/etc/nginx/certs/ec-private-key.pem
+      - ./ca_bundle.crt:/etc/nginx/certs/ca_bundle.crt
+    depends_on:
+      - frontend-admin
+      - backend
+    networks:
+      - app-network
+
+  nginx-bca:
+    build:
+      context: ./frontend-bca
+      dockerfile: Dockerfile.nginx
+    container_name: citizen-services-nginx-bca
+    restart: always
+    ports:
+      - "8002:80"
+      - "44302:443"
+    volumes:
+      - ./frontend-bca/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend-bca/dist:/usr/share/nginx/html
+      - ./certificate.crt:/etc/nginx/certs/certificate.crt
+      - ./ec-private-key.pem:/etc/nginx/certs/ec-private-key.pem
+      - ./ca_bundle.crt:/etc/nginx/certs/ca_bundle.crt
+    depends_on:
+      - frontend-bca
+      - backend
+    networks:
+      - app-network
+  nginx-police:
+    build:
+      context: ./frontend-police
+      dockerfile: Dockerfile.nginx
+    container_name: citizen-services-nginx-police
+    restart: always
+    ports:
+      - "8003:80"
+      - "44303:443"
+    volumes:
+      - ./frontend-police/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend-police/dist:/usr/share/nginx/html
+      - ./certificate.crt:/etc/nginx/certs/certificate.crt
+      - ./ec-private-key.pem:/etc/nginx/certs/ec-private-key.pem
+      - ./ca_bundle.crt:/etc/nginx/certs/ca_bundle.crt
+    depends_on:
+      - frontend-police
+      - backend
+    networks:
+      - app-network
 
 networks:
   app-network:
@@ -114,6 +223,12 @@ volumes:
     name: citizen_services_backend_node_modules
   frontend_node_modules:
     name: citizen_services_frontend_node_modules
+  frontend-admin_node_modules:
+    name: citizen_services_frontend_admin_node_modules
+  frontend-bca_node_modules:
+    name: citizen_services_frontend_ca_node_modules
+  frontend-police_node_modules:
+    name: citizen_services_frontend_police_node_modules
   frontend_dist:
     name: citizen_services_frontend_dist
   tpm_data: 

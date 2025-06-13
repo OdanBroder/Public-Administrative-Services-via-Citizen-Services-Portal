@@ -4,7 +4,7 @@ import FilePath from "../models/FilePath.js";
 import { generateFilename } from "../config/multerConfig.js";
 import path from "path";
 import fs from "fs";
-import { encrypt, decrypt } from "../config/cryptoUtils.js";
+import { decrypt } from "../config/cryptoUtils.js";
 export const createCitizen = async (req, res) => {
   try {
     const {
@@ -15,8 +15,7 @@ export const createCitizen = async (req, res) => {
       ngaySinh,
       gioiTinh,
       queQuan,
-      noiThuongTru,
-      csr
+      noiThuongTru
     } = req.body;
 
     // Basic validation
@@ -38,6 +37,31 @@ export const createCitizen = async (req, res) => {
 
     const hinhAnhCCCDTruocFile = req.files.hinhAnhCCCDTruoc[0];
     const hinhAnhCCCDSauFile = req.files.hinhAnhCCCDSau[0];
+
+    if (!hinhAnhCCCDTruocFile || !hinhAnhCCCDSauFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng tải lên hình ảnh CCCD trước và sau"
+      });
+    }
+
+    let csr = null;
+    if (req.files.csr && req.files.csr[0]) {
+
+      const csrFile = req.files.csr[0];
+      // Convert buffer to UTF-8 string
+      csr = csrFile.buffer.toString('utf8');
+
+      // Validate CSR format
+      if (!csr.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
+        !csr.includes('-----END CERTIFICATE REQUEST-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "CSR format không hợp lệ. Vui lòng cung cấp file CSR đúng định dạng PEM."
+        });
+      }
+    }
+
     if (!hinhAnhCCCDTruocFile || !hinhAnhCCCDSauFile) {
       return res.status(400).json({
         success: false,
@@ -53,7 +77,7 @@ export const createCitizen = async (req, res) => {
     }
 
     const id = req.user.userId;
-
+    
     const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({
@@ -70,8 +94,7 @@ export const createCitizen = async (req, res) => {
     if (existingCitizen) {
       return res.status(400).json({
         success: false,
-        message:
-          "Bạn đã đăng ký thông tin, vui lòng liên hệ cơ quan chức năng để cập nhật",
+        message: "Ban đã đăng ký thông tin công dân, không thể đăng ký lại, vui lòng liên hệ cơ quan chức năng để cập nhật thông tin"
       });
     }
 
@@ -86,7 +109,7 @@ export const createCitizen = async (req, res) => {
       await fs.promises.mkdir(userDir, { recursive: true });
       await fs.promises.mkdir(certDir, { recursive: true });
 
-      const csrPath = path.join(certDir, 'req.csr');
+      const csrPath = path.join(certDir, 'user_csr.csr');
       // Write CSR to file
       await fs.promises.writeFile(csrPath, csr);
 
@@ -101,7 +124,7 @@ export const createCitizen = async (req, res) => {
       if (!filePath) {
         throw new Error('Failed to create file path record');
       }
-      
+
       // Verify files were created successfully
       const filesExist = await Promise.all([
         fs.promises.access(csrPath).then(() => true).catch(() => false)

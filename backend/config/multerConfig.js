@@ -1,7 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import { encrypt } from './cryptoUtils.js';
-import tpmController from '../utils/crypto/tpmController.js'
+
 // Set storage engine to memoryStorage to get file buffer
 const upload = multer({
   storage: multer.memoryStorage(), 
@@ -14,17 +14,21 @@ const upload = multer({
   },
 }).fields([
   { name: 'hinhAnhCCCDTruoc', maxCount: 1 },
-  { name: 'hinhAnhCCCDSau', maxCount: 1 }
+  { name: 'hinhAnhCCCDSau', maxCount: 1 },
+  { name: 'csr', maxCount: 1 } // Add CSR field
 ]);
 
-// Middleware to encrypt the file buffer
+// Middleware to encrypt the file buffer (but NOT for CSR files)
 const encryptFileMiddleware = (req, res, next) => {
   if (req.files) {
     // req.files is an object where keys are field names and values are arrays of files
     for (const fieldName in req.files) {
       req.files[fieldName].forEach(file => {
-        const encrypted = encrypt(file.buffer);
-        file.buffer = encrypted;
+        // Only encrypt image files, not CSR files
+        if (fieldName !== 'csr') {
+          const encrypted = encrypt(file.buffer);
+          file.buffer = encrypted;
+        }
       });
     }
   }
@@ -40,16 +44,32 @@ function generateFilename(req, file) {
   return `CCCD-${req.user.userId}${suffix}${path.extname(file.originalname)}`;
 }
 
-// Check file type
+// Check file type - updated to handle CSR files
 function checkFileType(file, cb) {
-  const filetypes = /jpeg|jpg|png|gif/;
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype);
-
-  if (mimetype && extname) {
-    return cb(null, true);
+  // Allow CSR files
+  if (file.fieldname === 'csr') {
+    const csrTypes = /csr|pem|txt/;
+    const extname = csrTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = file.mimetype === 'text/plain' || 
+                     file.mimetype === 'application/x-pem-file' || 
+                     file.mimetype === 'application/octet-stream';
+    
+    if (mimetype || extname || file.originalname === 'request.csr') {
+      return cb(null, true);
+    } else {
+      cb("Error: Invalid CSR file type!");
+    }
   } else {
-    cb("Error: Images Only!");
+    // Handle image files
+    const filetypes = /jpeg|jpg|png|gif/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb("Error: Images Only!");
+    }
   }
 }
 
