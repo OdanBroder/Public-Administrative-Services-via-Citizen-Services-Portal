@@ -1,5 +1,25 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
+
+const convertPEMToOriginal = (pemKey) => {
+  // Remove the PEM headers and footers
+  const base64Key = pemKey
+    .replace(/-----BEGIN [^-]+-----/, "") // Remove the BEGIN header
+    .replace(/-----END [^-]+-----/, "")   // Remove the END footer
+    .replace(/\n/g, "");                  // Remove newlines
+
+  // Decode the Base64 content
+  const binaryString = atob(base64Key);
+
+  // Convert the binary string to a Uint8Array
+  const originalData = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    originalData[i] = binaryString.charCodeAt(i);
+  }
+
+  return originalData;
+};
 
 const Profile = () => {
   const { api } = useAuth();
@@ -17,15 +37,19 @@ const Profile = () => {
   const [selectedFiles, setSelectedFiles] = useState({
     hinhAnhCCCDTruoc: null,
     hinhAnhCCCDSau: null,
+    privateKey: null,
+    publicKey: null,
   });
 
   const [previewUrls, setPreviewUrls] = useState({
     hinhAnhCCCDTruoc: "",
     hinhAnhCCCDSau: "",
+    privateKey: "",
+    publicKey: "",
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState({ type: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleChange = (e) => {
@@ -35,48 +59,44 @@ const Profile = () => {
       [name]: value,
     });
   };
+  const renderListItem = (label, value) => (
+    <div className="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4 border-b border-gray-200 last:border-b-0">
+      <dt className="text-sm font-medium text-gray-600">{label}:</dt>
+      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+        {value || <span className="text-gray-400 italic">Chưa cung cấp</span>}
+      </dd>
+    </div>
+  );
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (files && files[0]) {
-      // Update selected file
       setSelectedFiles({
         ...selectedFiles,
         [name]: files[0],
       });
 
-      // Create preview
       const fileReader = new FileReader();
       fileReader.onload = () => {
         setPreviewUrls({
           ...previewUrls,
-          [name]: fileReader.result,
+          [name]: fileReader.result, // Store the file content
         });
       };
-      fileReader.readAsDataURL(files[0]);
+
+      // Use readAsText for .key files and readAsDataURL for images
+      if (name === "hinhAnhCCCDTruoc" || name === "hinhAnhCCCDSau") {
+        fileReader.readAsDataURL(files[0]); // For image files
+      } else if (name === "privateKey" || name === "publicKey") {
+        fileReader.readAsText(files[0]); // For .key files
+      }
     }
-  };
-
-  const handleFormClick = (e) => {
-    e.preventDefault();
-
-    // Validate both images are selected
-    if (!selectedFiles.hinhAnhCCCDTruoc || !selectedFiles.hinhAnhCCCDSau) {
-      setSubmitStatus({
-        type: "error",
-        message: "Vui lòng tải lên cả hai mặt của CCCD",
-      });
-      return;
-    }
-
-    // Show confirmation modal
-    setShowConfirmation(true);
   };
 
   const confirmSubmission = async (e) => {
     e.preventDefault();
 
-    // Validate both images are selected
+    // Validate both images and keys are selected
     if (!selectedFiles.hinhAnhCCCDTruoc || !selectedFiles.hinhAnhCCCDSau) {
       setSubmitStatus({
         type: "error",
@@ -85,7 +105,13 @@ const Profile = () => {
       return;
     }
 
-    // Validate token is provided
+    if (!previewUrls.privateKey || !previewUrls.publicKey) {
+      setSubmitStatus({
+        type: "error",
+        message: "Vui lòng tải lên cả Private Key và Public Key",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitStatus({ type: "", message: "" });
@@ -98,18 +124,32 @@ const Profile = () => {
         formDataToSend.append(key, formData[key]);
       });
 
+      // Convert PEM to Uint8Array
+      const privateKeyUint8Array = convertPEMToOriginal(previewUrls.privateKey);
+      const publicKeyUint8Array = convertPEMToOriginal(previewUrls.publicKey);
+
+      // Prepare subject information
+      const subjectInfo = ["C=VN", `L=${formData.noiThuongTru}`, `CN=${formData.hoVaTen}`];
+
+      // Generate CSR using Uint8Array keys and subjectInfo
+      const csrGenerated = await Mldsa_wrapper.generateCSR(privateKeyUint8Array, publicKeyUint8Array, subjectInfo);
+      if (!csrGenerated) {
+        throw new Error("Failed to generate CSR");
+      }
+
+      formDataToSend.append("csr", new Blob([csrGenerated], { type: "application/octet-stream" }));
+
       // Append both image files
       formDataToSend.append("hinhAnhCCCDTruoc", selectedFiles.hinhAnhCCCDTruoc);
       formDataToSend.append("hinhAnhCCCDSau", selectedFiles.hinhAnhCCCDSau);
-      const token = localStorage.getItem("accessToken");
+
       const response = await api.post("/citizen", formDataToSend, {
         headers: {
           "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
         },
       });
 
-      if (!response.success) {
+      if (!response.data.success) {
         throw new Error(response.data.msg || "Lỗi không xác định");
       }
 
@@ -134,31 +174,25 @@ const Profile = () => {
       setSelectedFiles({
         hinhAnhCCCDTruoc: null,
         hinhAnhCCCDSau: null,
+        privateKey: null,
+        publicKey: null,
       });
       setPreviewUrls({
         hinhAnhCCCDTruoc: "",
         hinhAnhCCCDSau: "",
+        privateKey: "",
+        publicKey: "",
       });
     } catch (error) {
       console.error("Error submitting form:", error);
       setSubmitStatus({
         type: "error",
-        message: `Lỗi: ${error.response?.data?.msg || "Không thể kết nối đến máy chủ"
-          }`,
+        message: `Lỗi: ${error.response?.data?.msg || "Không thể kết nối đến máy chủ"}`,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const renderListItem = (label, value) => (
-    <div className="py-2.5 sm:grid sm:grid-cols-3 sm:gap-4 border-b border-gray-200 last:border-b-0">
-      <dt className="text-sm font-medium text-gray-600">{label}:</dt>
-      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-        {value || <span className="text-gray-400 italic">Chưa cung cấp</span>}
-      </dd>
-    </div>
-  );
 
   return (
     <div className="flex items-center justify-center w-h-full">
@@ -172,15 +206,16 @@ const Profile = () => {
           {submitStatus.message && (
             <div
               className={`mb-4 p-4 rounded-md ${submitStatus.type === "success"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
                 }`}
             >
               {submitStatus.message}
             </div>
           )}
 
-          <form onSubmit={handleFormClick} className="space-y-6">
+          <form onSubmit={confirmSubmission} className="space-y-6">
+            {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Họ và Tên */}
               <div>
@@ -403,11 +438,63 @@ const Profile = () => {
               )}
             </div>
 
+            {/* Load Private Key */}
+            <div className="mb-4">
+              <label
+                htmlFor="privateKey"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Tải lên Private Key:
+              </label>
+              <input
+                type="file"
+                id="privateKey"
+                name="privateKey"
+                accept=".key"
+                onChange={handleFileChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {previewUrls.privateKey && (
+                <textarea
+                  readOnly
+                  value={previewUrls.privateKey}
+                  className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono resize-none"
+                  rows={6}
+                ></textarea>
+              )}
+            </div>
+
+            {/* Load Public Key */}
+            <div className="mb-4">
+              <label
+                htmlFor="publicKey"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Tải lên Public Key:
+              </label>
+              <input
+                type="file"
+                id="publicKey"
+                name="publicKey"
+                accept=".key"
+                onChange={handleFileChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {previewUrls.publicKey && (
+                <textarea
+                  readOnly
+                  value={previewUrls.publicKey}
+                  className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono resize-none"
+                  rows={6}
+                ></textarea>
+              )}
+            </div>
+
             <div className="flex justify-center">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`px-6 py-2 bg-indigo-600! text-white font-medium rounded-md hover:bg-indigo-700! focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                className={`px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
               >
                 {isSubmitting ? "Đang xử lý..." : "Gửi thông tin"}
@@ -468,3 +555,4 @@ const Profile = () => {
 };
 
 export default Profile;
+
