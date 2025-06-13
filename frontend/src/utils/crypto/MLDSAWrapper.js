@@ -14,7 +14,7 @@ class MLDSAWrapper {
    * Creates a new instance of the ML-DSA wrapper.
    * @param {string} wasmPath - Path to the compiled WASM module JS loader (default: './mldsa_lib.js')
    */
-  constructor(wasmPath = '/utils/crypto/mldsa_lib.js') {
+  constructor(wasmPath = './mldsa_lib.js') {
     this.wasmPath = wasmPath;
     this.module = null;
     this.initialized = false;
@@ -245,14 +245,14 @@ class MLDSAWrapper {
   /**
    * Generates a Certificate Signing Request (CSR) using a private key.
    * @param {Uint8Array} privateKey - The private key as a byte array
+   * @param {Uint8Array} publicKey - The public key as a byte array
    * @param {string[]} subjectInfo - Array of subject components (e.g., ["C=US", "CN=example.com"])
-   * @param {string} [csrPath='/working/req.csr'] - Virtual FS path to save the CSR
    * @returns {Promise<Uint8Array>} The generated CSR as a byte array
    * @throws {Error} If CSR generation fails
    */
-  async generateCSR(privateKey, publicKey, subjectInfo, csrPath = '/working/req.csr') {
+  async generateCSR(privateKey, publicKey, subjectInfo) {
     this._ensureInitialized();
-    this.ensureDirForFilePath(csrPath);
+    const csrData = this.malloc(1024 * 1024); // Allocate 1MB for CSR data
     // Allocate memory for the private key
     const privateKeyPtr = this.malloc(privateKey.length);
     const publicKeyPtr = this.malloc(publicKey.length);
@@ -274,39 +274,41 @@ class MLDSAWrapper {
       const result = this._generate_csr(
         privateKeyPtr,
         publicKeyPtr,
-        csrPath,
         subjectAllocation.arrayPtr,
-        subjectInfo.length
+        subjectInfo.length,
+        csrData,
+        1024 * 1024 // Size of the allocated CSR data buffer
       );
       
       if (!result) {
         throw new Error("CSR generation failed");
       }
-      
-      // Read the CSR file from virtual FS
-      const csrData = this.FS.readFile(csrPath);
-      return new Uint8Array(csrData);
+      const csrVec = this._copyFromWasmMemory(csrData, result);
+      return new Uint8Array(csrVec);
+
     } finally {
       // Free allocated memory
       if (privateKeyPtr) this.free(privateKeyPtr);
       if (subjectAllocation) this._freeStringArray(subjectAllocation);
+      if (csrData) this.free(csrData);
+      if (publicKeyPtr) this.free(publicKeyPtr);
     }
   }
 
   /**
    * Generates a self-signed certificate from a CSR and private key.
    * @param {Uint8Array} privateKey - The private key as a byte array
+   * @param {Uint8Array} csrData - The CSR data as a byte array
    * @param {number} [days=365] - Validity period in days
-   * @param {string} [csrPath='/working/req.csr'] - Virtual FS path to save the CSR
-   * @param {string} [certPath='/working/cert.pem'] - Virtual FS path to save the certificate
    * @returns {Promise<Uint8Array>} The generated certificate as a byte array
    * @throws {Error} If certificate generation fails
    */
-  async generateSelfSignedCertificate(privateKey, days = 365, csrPath = '/working/req.csr', certPath = '/working/cert.pem') {
+  async generateSelfSignedCertificate(privateKey, csrData,  days = 365) {
     this._ensureInitialized();
-    this.ensureDirForFilePath(certPath);
     // Allocate memory for the private key
     const privateKeyPtr = this.malloc(privateKey.length);
+    const csrPtr = this.malloc(csrData.length + 1);
+    const certPtr = this.malloc(1024 * 1024); // Allocate 1MB for certificate data
     if (!privateKeyPtr) {
       throw new Error("Failed to allocate memory for private key");
     }
@@ -314,13 +316,16 @@ class MLDSAWrapper {
     try {
       // Copy private key to WASM memory
       this._copyToWasmMemory(privateKeyPtr, privateKey);
+      this._copyToWasmMemory(csrPtr, csrData);
       
       // Write CSR to virtual FS      
       // Generate the certificate
       const result = this._generate_self_signed_certificate(
-        csrPath,
+        csrPtr,
+        csrData.length,
         privateKeyPtr,
-        certPath,
+        certPtr, 
+        1024 * 1024, // Size of the allocated certificate data buffer
         days
       );
       
@@ -329,47 +334,71 @@ class MLDSAWrapper {
       }
       
       // Read the certificate file from virtual FS
-      const certData = this.FS.readFile(certPath);
+      const certData = this._copyFromWasmMemory(certPtr, result);
       return new Uint8Array(certData);
     } finally {
       // Free allocated memory
       if (privateKeyPtr) this.free(privateKeyPtr);
+      if (csrPtr) this.free(csrPtr);
+      if (certPtr) this.free(certPtr);
     }
   }
 
   /**
    * Verifies if a certificate has been issued by a given CA certificate.
-   * @param {string} certPath - Virtual FS path to the certificate to verify
-   * @param {string} caCertPath - Virtual FS path to the CA certificate
+   * @param {Uint8Array} certData - The certificate data as a byte array
+   * @param {Uint8Array} caCertData - The CA certificate data as a byte array
    * @returns {Promise<boolean>} True if the certificate is issued by the given CA, false otherwise
    * @throws {Error} If verification process fails
    */
-  async verifyCertificateIssuedByCA(certPath, caCertPath) {
+  async verifyCertificateIssuedByCA(certData, caCertData) {
     this._ensureInitialized();
     // Ensure files exist in the virtual FS
-    if (!this.FS.analyzePath(certPath).exists) {
-      throw new Error(`Certificate file not found in virtual FS: ${certPath}`);
+    const certPtr = this.malloc(certData.length + 1);
+    const caCertPtr = this.malloc(caCertData.length + 1);
+    if (!certPtr || !caCertPtr) {
+      if (certPtr) this.free(certPtr);
+      if (caCertPtr) this.free(caCertPtr);
+      throw new Error("Failed to allocate memory for certificate or CA certificate");
     }
-    if (!this.FS.analyzePath(caCertPath).exists) {
-      throw new Error(`CA certificate file not found in virtual FS: ${caCertPath}`);
+    try {
+      // Copy data to WASM memory
+      this._copyToWasmMemory(certPtr, certData);
+      this._copyToWasmMemory(caCertPtr, caCertData);
+      
+      // Verify the certificate
+      const result = this._verify_certificate_issued_by_ca(
+        certPtr,
+        certData.length,
+        caCertPtr,
+        caCertData.length
+      );
+      
+      return !!result; // Convert to boolean
     }
-    const result = this._verify_certificate_issued_by_ca(certPath, caCertPath);
-    return !!result;
+    catch (error) {
+      console.error("Certificate verification failed:", error);
+      throw new Error(`Certificate verification failed: ${error.message}`);
+    }
+    finally {
+      // Free allocated memory
+      if (certPtr) this.free(certPtr);
+      if (caCertPtr) this.free(caCertPtr);
+    }
   }
 
   /**
    * Signs a message using ML-DSA-65.
    * @param {Uint8Array} privateKey - The private key as a byte array
    * @param {string|Uint8Array} message - The message to sign
-   * @param {string} [signaturePath='/working/signature.bin'] - Virtual FS path to save the signature
    * @returns {Promise<Uint8Array>} The signature as a byte array
    * @throws {Error} If signing fails
    */
-  async sign(privateKey, message, signaturePath = '/working/signature.bin') {
+  async sign(privateKey, message) {
     this._ensureInitialized();
-    this.ensureDirForFilePath(signaturePath);
     // Allocate memory for the private key
     const privateKeyPtr = this.malloc(privateKey.length);
+    const signaturePtr = this.malloc(1024 * 1024);
     if (!privateKeyPtr) {
       throw new Error("Failed to allocate memory for private key");
     }
@@ -396,7 +425,8 @@ class MLDSAWrapper {
         privateKeyPtr,
         messagePtr,
         messageBytes.length,
-        signaturePath
+        signaturePtr,
+        1024 * 1024 
       );
       
       if (!result) {
@@ -404,12 +434,13 @@ class MLDSAWrapper {
       }
       
       // Read the signature file from virtual FS
-      const signatureData = this.FS.readFile(signaturePath);
+      const signatureData = this._copyFromWasmMemory(signaturePtr, result);
       return new Uint8Array(signatureData);
     } finally {
       // Free allocated memory
       if (privateKeyPtr) this.free(privateKeyPtr);
       if (messagePtr) this.free(messagePtr);
+      if (signaturePtr) this.free(signaturePtr);
     }
   }
 
@@ -449,7 +480,7 @@ class MLDSAWrapper {
       this._copyToWasmMemory(messagePtr, messageBytes);
       
       // Write signature to virtual FS
-      this.FS.writeFile(signaturePath, signature);
+      // this.FS.writeFile(signaturePath, signature);
       
       // Verify the signature
       const result = this._verify_mldsa65(
@@ -469,20 +500,26 @@ class MLDSAWrapper {
 
   /**
    * Verifies a signature using a certificate.
+   * @param {Uint8Array} certData - The certificate data as a byte array
+   * @param {Uint8Array} signatureData - The signature to verify
    * @param {string|Uint8Array} message - The original message
-   * @param {string} [certPath='/working/cert.pem'] - Virtual FS path to save the certificate
-   * @param {string} [signaturePath='/working/signature.bin'] - Virtual FS path to save the signature
    * @returns {Promise<boolean>} True if the signature is valid, false otherwise
    * @throws {Error} If verification process fails
    */
-  async verifyWithCertificate(message, certPath = '/working/cert.pem', signaturePath = '/working/signature.bin') {
+  async verifyWithCertificate(certData, signatureData, message) {
     this._ensureInitialized();
     
     // Convert message to Uint8Array if it's a string
     const messageBytes = typeof message === 'string' 
       ? new TextEncoder().encode(message) 
       : message;
-    
+    const certPtr = this.malloc(certData.length + 1);
+    const signaturePtr = this.malloc(signatureData.length + 1);
+    if (!certPtr || !signaturePtr) {
+      if (certPtr) this.free(certPtr);
+      if (signaturePtr) this.free(signaturePtr);
+      throw new Error("Failed to allocate memory for certificate or signature");
+    }
     // Allocate memory for the message
     const messagePtr = this.malloc(messageBytes.length);
     if (!messagePtr) {
@@ -492,12 +529,15 @@ class MLDSAWrapper {
     try {
       // Copy message to WASM memory
       this._copyToWasmMemory(messagePtr, messageBytes);
-      
+      this._copyToWasmMemory(certPtr, certData);
+      this._copyToWasmMemory(signaturePtr, signatureData);
       
       // Verify the signature
       const result = this._verify_signature_with_cert(
-        certPath,
-        signaturePath,
+        certPtr,
+        certData.length,
+        signaturePtr,
+        signatureData.length,
         messagePtr,
         messageBytes.length
       );
@@ -506,6 +546,8 @@ class MLDSAWrapper {
     } finally {
       // Free allocated memory
       if (messagePtr) this.free(messagePtr);
+      if (certPtr) this.free(certPtr);
+      if (signaturePtr) this.free(signaturePtr);
     }
   }
 
@@ -514,18 +556,19 @@ class MLDSAWrapper {
   /**
    * Signs a certificate with a CA certificate and private key.
    * @param {Uint8Array} caPrivateKey - The CA private key as a byte array
+   * @param {Uint8Array} csrData - The CSR data as a byte array
+   * @param {Uint8Array} caCertData - The CA certificate data as a byte array
    * @param {number} [days=365] - Validity period in days
-   * @param {string} [csrPath='/working/req.csr'] - Virtual FS path to save the CSR
-   * @param {string} [caCertPath='/working/ca_cert.pem'] - Virtual FS path to save the CA certificate
-   * @param {string} [signedCertPath='/working/signed_cert.pem'] - Virtual FS path to save the signed certificate
    * @returns {Promise<Uint8Array>} The signed certificate as a byte array
    * @throws {Error} If certificate signing fails
    */
-  async signCertificate(caPrivateKey, days = 365, csrPath = '/working/req.csr', caCertPath = '/working/ca_cert.pem', signedCertPath = '/working/signed_cert.pem') {
+  async signCertificate(caPrivateKey, csrData, caCertData, days = 365) {
     this._ensureInitialized();
-    this.ensureDirForFilePath(signedCertPath);
     // Allocate memory for the CA private key
     const caPrivateKeyPtr = this.malloc(caPrivateKey.length);
+    const csrPtr = this.malloc(csrData.length + 1); 
+    const caCertPtr = this.malloc(caCertData.length + 1); 
+    const certPtr = this.malloc(1024 * 1024); // Allocate 1MB for signed certificate data
     if (!caPrivateKeyPtr) {
       throw new Error("Failed to allocate memory for CA private key");
     }
@@ -533,16 +576,21 @@ class MLDSAWrapper {
     try {
       // Copy CA private key to WASM memory
       this._copyToWasmMemory(caPrivateKeyPtr, caPrivateKey);
+      this._copyToWasmMemory(csrPtr, csrData);
+      this._copyToWasmMemory(caCertPtr, caCertData);
       
       // Write CSR and CA certificate to virtual FS
       
       // Sign the certificate
       const result = this._sign_certificate(
-        csrPath,
-        caCertPath,
+        csrPtr,
+        csrData.length,
+        caCertPtr,
+        caCertData.length,
         caPrivateKeyPtr,
         caPrivateKey.length,
-        signedCertPath,
+        certPtr,
+        1024 * 1024, 
         days
       );
       if (!result) {
@@ -550,11 +598,14 @@ class MLDSAWrapper {
       }
       
       // Read the signed certificate file from virtual FS
-      const signedCertData = this.FS.readFile(signedCertPath);
+      const signedCertData = this._copyFromWasmMemory(certPtr, result);
       return new Uint8Array(signedCertData);
     } finally {
       // Free allocated memory
       if (caPrivateKeyPtr) this.free(caPrivateKeyPtr);
+      if (csrPtr) this.free(csrPtr);
+      if (caCertPtr) this.free(caCertPtr);
+      if (certPtr) this.free(certPtr);
     }
   }
 
@@ -601,3 +652,4 @@ class MLDSAWrapper {
 const Mldsa_wrapper = new MLDSAWrapper();
 Mldsa_wrapper.initialize();
 export default Mldsa_wrapper;
+export { MLDSAWrapper }; // Export the class for direct use if needed
