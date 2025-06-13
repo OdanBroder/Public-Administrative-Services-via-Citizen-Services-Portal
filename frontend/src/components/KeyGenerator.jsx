@@ -63,7 +63,7 @@ const KeyGenerator = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header matching government portal style */}
       <div className="bg-gradient-to-r from-red-500 to-red-600 text-white py-4 px-6 shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center">
+        <div className="max-w-[96rem] mx-auto flex items-center">
           <Shield className="w-8 h-8 mr-3" />
           <div>
             <h1 className="text-2xl font-bold">Hệ thống tạo khóa mã hóa</h1>
@@ -73,7 +73,7 @@ const KeyGenerator = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-[90rem] mx-auto p-6">
         {/* Breadcrumb */}
         <nav className="text-sm text-gray-600 mb-6">
           <span>Trang chủ</span> / <span>Dịch vụ công</span> / <span className="text-red-600 font-medium">Tạo khóa mã hóa</span>

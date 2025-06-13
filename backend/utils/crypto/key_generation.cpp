@@ -260,7 +260,22 @@ bool generate_self_signed_certificate(char* csr_path, char *private_key, char *c
         handle_openssl_error("X509_set_pubkey");
         return false;
     }
+    X509_EXTENSION* ext = X509V3_EXT_conf_nid(NULL, NULL, NID_basic_constraints, "CA:TRUE");
+    if (!ext || !X509_add_ext(cert.get(), ext, -1)) {
+        handle_openssl_error("X509_add_ext basicConstraints");
+        if (ext) X509_EXTENSION_free(ext);
+        return false;
+    }
+    X509_EXTENSION_free(ext);
 
+    // Optionally add keyUsage for CA
+    X509_EXTENSION* ext2 = X509V3_EXT_conf_nid(NULL, NULL, NID_key_usage, "keyCertSign,cRLSign");
+    if (!ext2 || !X509_add_ext(cert.get(), ext2, -1)) {
+        handle_openssl_error("X509_add_ext keyUsage");
+        if (ext2) X509_EXTENSION_free(ext2);
+        return false;
+    }
+    X509_EXTENSION_free(ext2);
     // Sign the certificate with the CA private key (which is our key for self-signed)
     const EVP_MD* digest = EVP_sha256();
     if (X509_sign(cert.get(), ca_pkey.get(), NULL) <= 0) {

@@ -91,12 +91,17 @@ EXPOSE_WASM void freeMemory(void* ptr);
   */
 EXPOSE_WASM bool sha256_digest(const char *message_chr, size_t message_len, char *digest_out);
 EXPOSE_WASM bool generate_mldsa65_keypair(char *private_key, char *public_key);
-EXPOSE_WASM bool sign_certificate(const char* csr_path,
-                      const char* ca_cert_path,
-                      const char* ca_privkey_buf,  
-                      size_t ca_privkey_len,
-                      const char* result_cert_path,
-                      int days_valid = 365);
+EXPOSE_WASM int sign_certificate(
+    const char* csr_buf,
+    size_t csr_buf_len,
+    const char* ca_cert_buf,
+    size_t ca_cert_buf_len,
+    const char* ca_privkey_buf,
+    size_t ca_privkey_len,
+    char* out_cert_buf,
+    size_t out_cert_buf_size,
+    int days_valid
+);
 /**
  * @brief Generates a Certificate Signing Request (CSR) using a private key.
  * @param private_key_char The private key buffer
@@ -104,7 +109,14 @@ EXPOSE_WASM bool sign_certificate(const char* csr_path,
  * @param subject_info Vector of subject components (e.g., {"C=US", "ST=CA", "O=MyOrg", "CN=localhost"}).
  * @return true on success, false on failure.
  */
-EXPOSE_WASM bool generate_csr(char* private_key_chr, char *public_key_char, char* csr_path, char** subject_info_vec, int subject_info_count);
+EXPOSE_WASM int generate_csr(
+    char* private_key_chr,
+    char* public_key_chr,
+    char** subject_info_vec,
+    int subject_info_count,
+    char* out_csr_buf,
+    size_t out_csr_buf_size
+);
 
 /**
  * @brief Generates a self-signed X.509 certificate from a CSR and private key.
@@ -114,9 +126,21 @@ EXPOSE_WASM bool generate_csr(char* private_key_chr, char *public_key_char, char
  * @param days Validity period in days.
  * @return true on success, false on failure.
  */
-EXPOSE_WASM bool generate_self_signed_certificate(char* csr_path, char* private_key_chr, char* certificate_path, int days);
+
+
+EXPOSE_WASM int generate_self_signed_certificate(
+    const char* csr_buf,
+    size_t csr_buf_len,
+    char* private_key,
+    char* out_cert_buf,
+    size_t out_cert_buf_size,
+    int days
+);
 // --- Signing ---
-EXPOSE_WASM bool verify_certificate_issued_by_ca(const char* CertPath, const char* CACertPath);
+EXPOSE_WASM bool verify_certificate_issued_by_ca(
+    const char* cert_buf, size_t cert_buf_len,
+    const char* ca_cert_buf, size_t ca_cert_buf_len
+);
 /**
  * @brief Sign a message using MLDSA 
   * @param private_key  The private key buffer.
@@ -125,8 +149,13 @@ EXPOSE_WASM bool verify_certificate_issued_by_ca(const char* CertPath, const cha
   * @param signature_path Path to save the binary signature file.
   * @return true on success, false on failure.
 */
-EXPOSE_WASM bool sign_mldsa65(const char *private_key, const char *message, size_t message_len, char *signature_path);
-
+EXPOSE_WASM int sign_mldsa65(
+    const char *private_key,
+    const char *message,
+    size_t message_len,
+    unsigned char *signature_buf,
+    size_t signature_buf_size
+);
 // --- Verification ---
 
 /**
@@ -156,7 +185,7 @@ EXPOSE_WASM bool extract_pubkey_from_cert(const std::string& certificate_path, c
   * @param message_len Length of the original message.
  * @return true if signature is valid, false otherwise (or on error).
  */
-EXPOSE_WASM bool verify_signature_with_cert(const char *certificate_path_chr, const char *signature_path,  const char *message_chr, int message_len);
+EXPOSE_WASM bool verify_signature_with_cert(const char *certificate_buf, size_t certificate_len, const unsigned char *signature_buf, size_t signature_len, const char *message_chr, int message_len);
 } // Extern "C"
 #endif //CRYPTO_LIB_H
 //

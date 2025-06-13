@@ -81,6 +81,7 @@ const AppContent = () => {
   const { user, role } = useAuth();
   const excludedRoutes = ['/verify-qr', '/generate-keys'];
   const isExcludedRoute = excludedRoutes.includes(location.pathname);
+  console.log(location);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -167,6 +168,7 @@ const AppContent = () => {
           } />
           <Route path="/generate-keys" element={
             <KeyGenerator />
+            // <div>HEHEHE</div>
           } />
 
           {/* For admin */}
@@ -181,7 +183,7 @@ const AppContent = () => {
           <Route path="/not-found" element={<NotFound />} />
 
           {/* Catch-all route */}
-          <Route path="*" element={<Navigate to="/not-found" />} />
+          <Route path="*" element={<NotFound/>} />
 
         </Routes>
       </div>

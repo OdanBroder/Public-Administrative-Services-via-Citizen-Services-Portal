@@ -29,55 +29,45 @@ extern const int ml_dsa_65_private_key_size; // Defined in mldsa_lib.h
 extern const int ml_dsa_65_public_key_size; // Defined in mldsa_lib.h
 // --- Signing Implementations ---
 
-bool sign_mldsa65(const char *private_key, const char *message, size_t message_len ,char *signature_path) {
+// Returns signature length on success, 0 on failure
+int sign_mldsa65(
+    const char *private_key,
+    const char *message,
+    size_t message_len,
+    unsigned char *signature_buf,
+    size_t signature_buf_size
+) {
     EVP_PKEY_ptr pkey(EVP_PKEY_new_raw_private_key_ex(NULL, "ML-DSA-65", NULL, (unsigned char*) private_key, ml_dsa_65_private_key_size), EVP_PKEY_free);
     if (!pkey.get()) {
-        return false;
-    }
-    // Check if the key is ECDSA
-    // if (EVP_PKEY_get_base_id(pkey.get()) != NID_ML_DSA_65) {
-    //     std::cerr << "Error: Provided key is not a key for ML-DSA-65 signing." << std::endl;
-    //     handle_openssl_error("EVP_PKEY_new_raw_private_key");
-    //   printf("Expected key type: %d, got: %d\n", EVP_PKEY_ML_DSA_65 ,EVP_PKEY_get_base_id(pkey.get()));
-    //     return false;
-    // }
-
-    std::vector<unsigned char> message_data;
-    for(int i=0;i < message_len; i++) {
-        message_data.push_back(static_cast<unsigned char>(message[i]));
+        return 0;
     }
 
     EVP_MD_CTX_ptr md_ctx(EVP_MD_CTX_new(), EVP_MD_CTX_free);
     if (!md_ctx) {
         handle_openssl_error("EVP_MD_CTX_new");
-        return false;
+        return 0;
     }
 
     if (EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey.get()) <= 0) {
         handle_openssl_error("EVP_DigestSignInit");
-        return false;
+        return 0;
     }
+
     size_t sig_len = 0;
-
-    if(EVP_DigestSign(md_ctx.get(), NULL, &sig_len, message_data.data(), message_data.size()) <= 0){
-      handle_openssl_error("EVP_DigestSign (get size)");
-      return false;
+    if (EVP_DigestSign(md_ctx.get(), NULL, &sig_len, (const unsigned char*)message, message_len) <= 0) {
+        handle_openssl_error("EVP_DigestSign (get size)");
+        return 0;
     }
 
-    // Determine required buffer size for signature
+    if (sig_len > signature_buf_size) {
+        // Buffer too small
+        return 0;
+    }
 
-
-    std::vector<unsigned char> signature(sig_len);
-    if (EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len, message_data.data(), message_data.size()) <=0) {
+    if (EVP_DigestSign(md_ctx.get(), signature_buf, &sig_len, (const unsigned char*)message, message_len) <= 0) {
         handle_openssl_error("EVP_DigestSignFinal (sign)");
-        return false;
-    }
-    signature.resize(sig_len); // Adjust size if needed
-
-    if (!write_file_bytes(signature_path, signature)) {
-        std::cerr << "Error: Failed to write signature to file: " << signature_path << std::endl;
-        return false;
+        return 0;
     }
 
-    return true;
+    return sig_len;
 }

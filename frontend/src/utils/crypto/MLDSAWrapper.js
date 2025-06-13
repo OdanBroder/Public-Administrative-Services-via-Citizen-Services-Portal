@@ -65,13 +65,13 @@ class MLDSAWrapper {
   _initWrappers() {
     // Wrap all exported C functions
     this._generate_mldsa65_keypair = this.cwrap('generate_mldsa65_keypair', 'number', ['number', 'number']);
-    this._generate_csr = this.cwrap('generate_csr', 'number', ['number', 'number' ,'string', 'number', 'number']);
-    this._generate_self_signed_certificate = this.cwrap('generate_self_signed_certificate', 'number', ['string', 'number', 'string', 'number']);
-    this._sign_mldsa65 = this.cwrap('sign_mldsa65', 'number', ['number', 'number', 'number', 'string']);
+    this._generate_csr = this.cwrap('generate_csr', 'number', ['number', 'number' ,'number', 'number', 'number', 'number',]);
+    this._generate_self_signed_certificate = this.cwrap('generate_self_signed_certificate', 'number', ['number','number','number','number','number','number',]);
+    this._sign_mldsa65 = this.cwrap('sign_mldsa65', 'number', ['number', 'number', 'number', 'number']);
     this._verify_mldsa65 = this.cwrap('verify_mldsa65', 'number', ['number', 'string', 'number', 'number']);
-    this._verify_signature_with_cert = this.cwrap('verify_signature_with_cert', 'number', ['string', 'string', 'number', 'number']);
-    this._sign_certificate = this.cwrap('sign_certificate', 'number', ['string', 'string', 'number', 'number', 'string', 'number']);
-    this._verify_certificate_issued_by_ca = this.cwrap('verify_certificate_issued_by_ca', 'number', ['string', 'string']);
+    this._verify_signature_with_cert = this.cwrap('verify_signature_with_cert', 'number', ['number','number','number','number','number','number',]);
+    this._sign_certificate = this.cwrap('sign_certificate', 'number', ['number', 'number','number','number','number','number','number','number','number' ]);
+    this._verify_certificate_issued_by_ca = this.cwrap('verify_certificate_issued_by_ca', 'number', ['number', 'number', 'number', 'number', ]);
   }
 
   /**
