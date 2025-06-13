@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 
-const convertPEMToOriginal = (pemKey) => {
+const convertPEMToDER = (pemKey) => {
   // Remove the PEM headers and footers
   const base64Key = pemKey
     .replace(/-----BEGIN [^-]+-----/, "") // Remove the BEGIN header
@@ -13,12 +13,12 @@ const convertPEMToOriginal = (pemKey) => {
   const binaryString = atob(base64Key);
 
   // Convert the binary string to a Uint8Array
-  const originalData = new Uint8Array(binaryString.length);
+  const derData = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
-    originalData[i] = binaryString.charCodeAt(i);
+    derData[i] = binaryString.charCodeAt(i);
   }
 
-  return originalData;
+  return derData;
 };
 
 const Profile = () => {
@@ -125,14 +125,14 @@ const Profile = () => {
       });
 
       // Convert PEM to Uint8Array
-      const privateKeyUint8Array = convertPEMToOriginal(previewUrls.privateKey);
-      const publicKeyUint8Array = convertPEMToOriginal(previewUrls.publicKey);
+      const privateKey = convertPEMToDER(previewUrls.privateKey);
+      const publicKey = convertPEMToDER(previewUrls.publicKey);
 
       // Prepare subject information
       const subjectInfo = ["C=VN", `L=${formData.noiThuongTru}`, `CN=${formData.hoVaTen}`];
 
       // Generate CSR using Uint8Array keys and subjectInfo
-      const csrGenerated = await Mldsa_wrapper.generateCSR(privateKeyUint8Array, publicKeyUint8Array, subjectInfo);
+      const csrGenerated = await Mldsa_wrapper.generateCSR(privateKey, publicKey, subjectInfo);
       if (!csrGenerated) {
         throw new Error("Failed to generate CSR");
       }

@@ -16,7 +16,7 @@ export const getUnverifiedUsers = async (req, res) => {
       include: [{
         model: FilePath,
         as: 'FilePath',
-        attributes: ['csr', 'public_key', 'certificate'],
+        attributes: ['csr', 'certificate'],
         required: true
       }]
     });
@@ -36,8 +36,7 @@ export const getUnverifiedUsers = async (req, res) => {
 
         // Verify files exist before reading
         const filesExist = await Promise.all([
-          fs.access(user.FilePath.csr).then(() => true).catch(() => false),
-          fs.access(user.FilePath.public_key).then(() => true).catch(() => false)
+          fs.access(user.FilePath.csr).then(() => true).catch(() => false)
         ]);
 
         if (filesExist.some(exists => !exists)) {
@@ -45,12 +44,10 @@ export const getUnverifiedUsers = async (req, res) => {
         }
 
         const csrContent = await fs.readFile(user.FilePath.csr, 'utf8');
-        const publicKeyContent = await fs.readFile(user.FilePath.public_key, 'utf8');
         
         return {
           ...user.toJSON(),
-          csr_content: csrContent,
-          public_key_content: publicKeyContent
+          csr_content: csrContent
         };
       } catch (error) {
         console.error(`Lỗi đọc file cho người dùng ${user.id}:`, error);

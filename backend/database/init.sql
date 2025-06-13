@@ -221,8 +221,6 @@ DO
 CREATE TABLE IF NOT EXISTS file_path (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,    
-    private_key VARCHAR(100) DEFAULT NULL, -- /working/user/user_id/cert/private.key (encrypted)
-    public_key VARCHAR(100) DEFAULT NULL,  -- /working/user/user_id/cert/public.key
     csr VARCHAR(100) DEFAULT NULL,         -- /working/user/user_id/cert/req.csr
     certificate VARCHAR(100) DEFAULT NULL, -- /working/user/user_id/cert/signed_cert.pem
     application VARCHAR(100) DEFAULT NULL,  -- /working/user/user_id/application

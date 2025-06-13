@@ -45,7 +45,6 @@ export const useVerifyUser = () => {
       const response = await api.post(`/police/sign-certificate/${userId}`);
       return response.data;
 
-
     } catch (err) {
       setError(err.message);
       throw err;

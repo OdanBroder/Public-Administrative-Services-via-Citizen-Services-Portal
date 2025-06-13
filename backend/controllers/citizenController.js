@@ -1,12 +1,10 @@
 import Citizen from "../models/Citizen.js";
 import User from "../models/User.js";
 import FilePath from "../models/FilePath.js";
-import  Mldsa_wrapper  from "../utils/crypto/MLDSAWrapper.js";
-import tpmService from "../utils/crypto/tpmController.js";
 import { generateFilename } from "../config/multerConfig.js";
 import path from "path";
 import fs from "fs";
-import {encrypt, decrypt} from "../config/cryptoUtils.js";
+import { encrypt, decrypt } from "../config/cryptoUtils.js";
 export const createCitizen = async (req, res) => {
   try {
     const {
@@ -18,6 +16,7 @@ export const createCitizen = async (req, res) => {
       gioiTinh,
       queQuan,
       noiThuongTru,
+      csr
     } = req.body;
 
     // Basic validation
@@ -33,7 +32,23 @@ export const createCitizen = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng điền đầy đủ thông tin" 
+        message: "Vui lòng điền đầy đủ thông tin"
+      });
+    }
+
+    const hinhAnhCCCDTruocFile = req.files.hinhAnhCCCDTruoc[0];
+    const hinhAnhCCCDSauFile = req.files.hinhAnhCCCDSau[0];
+    if (!hinhAnhCCCDTruocFile || !hinhAnhCCCDSauFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng tải lên hình ảnh CCCD trước và sau"
+      });
+    }
+
+    if (!csr) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp CSR (Certificate Signing Request)"
       });
     }
 
@@ -70,66 +85,45 @@ export const createCitizen = async (req, res) => {
       // Create directories
       await fs.promises.mkdir(userDir, { recursive: true });
       await fs.promises.mkdir(certDir, { recursive: true });
-      await fs.promises.mkdir(applicationDir, { recursive: true });
 
-      // Generate key pair and CSR using MLDSAWrapper
-      const { privateKey, publicKey } = await Mldsa_wrapper.generateKeyPair();
       const csrPath = path.join(certDir, 'req.csr');
-      const privateKeyPath = path.join(certDir, 'private.key');
-      const publicKeyPath = path.join(certDir, 'public.key');
-
-      const subjectInfo = ["C=VN", `L=${noiThuongTru}`, `CN=${hoVaTen}`];
-
-      // Generate CSR
-      const csrGenerated = await Mldsa_wrapper.generateCSR(privateKey, publicKey, subjectInfo, csrPath);
-      if (!csrGenerated) {
-        throw new Error('Failed to generate CSR');
-      }
+      // Write CSR to file
+      await fs.promises.writeFile(csrPath, csr);
 
       // Save file paths to database
       const filePath = await FilePath.create({
         user_id: id,
-        private_key: privateKeyPath,
-        public_key: publicKeyPath,
         csr: csrPath,
         certificate: null, // Will be updated when certificate is signed
         application: applicationDir // Set base application directory
       });
 
-      // Save private and public keys to files
-      await fs.promises.writeFile(
-      privateKeyPath,
-      await tpmService.encryptWithRootKey(privateKey)
-    );
-      await fs.promises.writeFile(publicKeyPath, publicKey);
-
+      if (!filePath) {
+        throw new Error('Failed to create file path record');
+      }
+      
       // Verify files were created successfully
       const filesExist = await Promise.all([
-        fs.promises.access(privateKeyPath).then(() => true).catch(() => false),
-        fs.promises.access(publicKeyPath).then(() => true).catch(() => false),
         fs.promises.access(csrPath).then(() => true).catch(() => false)
       ]);
 
       if (filesExist.some(exists => !exists)) {
         throw new Error('Failed to create one or more key files');
       }
-    const uploadDir = "uploads/";
-    if (!fs.existsSync(uploadDir)) {
-      await fs.promises.mkdir(uploadDir);
-    }
+      const uploadDir = `uploads/${id}`;
+      if (!fs.existsSync(uploadDir)) {
+        await fs.promises.mkdir(uploadDir);
+      }
 
-    const hinhAnhCCCDTruocFile = req.files.hinhAnhCCCDTruoc[0];
-    const hinhAnhCCCDSauFile = req.files.hinhAnhCCCDSau[0];
+      const frontFilename = generateFilename(req, hinhAnhCCCDTruocFile);
+      const backFilename = generateFilename(req, hinhAnhCCCDSauFile);
 
-    const frontFilename = generateFilename(req, hinhAnhCCCDTruocFile);
-    const backFilename = generateFilename(req, hinhAnhCCCDSauFile);
+      const frontImagePath = path.join(uploadDir, frontFilename);
+      const backImagePath = path.join(uploadDir, backFilename);
 
-    const frontImagePath = path.join(uploadDir, frontFilename);
-    const backImagePath = path.join(uploadDir, backFilename);
-
-    // Save encrypted buffers to disk
-    fs.writeFileSync(frontImagePath, hinhAnhCCCDTruocFile.buffer);
-    fs.writeFileSync(backImagePath, hinhAnhCCCDSauFile.buffer);
+      // Save encrypted buffers to disk
+      fs.writeFileSync(frontImagePath, hinhAnhCCCDTruocFile.buffer);
+      fs.writeFileSync(backImagePath, hinhAnhCCCDSauFile.buffer);
 
       const newCitizen = await Citizen.create({
         id: req.user.userId,
@@ -180,10 +174,10 @@ export const createCitizen = async (req, res) => {
       }
 
       console.error("Error creating citizen:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        message: "Lỗi khi đăng ký thông tin công dân", 
-        error: error.message 
+        message: "Lỗi khi đăng ký thông tin công dân",
+        error: error.message
       });
     }
   } catch (error) {
@@ -216,7 +210,7 @@ export const getCitizenById = async (req, res) => {
         message: "Không tìm thấy thông tin công dân",
       });
     }
-  
+
     // Decrypt images before sending
     let decryptedFrontImageBase64 = null;
     let decryptedBackImageBase64 = null;
@@ -232,7 +226,7 @@ export const getCitizenById = async (req, res) => {
       const decryptedBackBuffer = decrypt(encryptedBackBuffer.toString());
       decryptedBackImageBase64 = decryptedBackBuffer.toString('base64');
     }
-    
+
     return res.status(200).json({
       success: true,
       message: "Lấy thông tin công dân thành công",
