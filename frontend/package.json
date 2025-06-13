@@ -6,7 +6,7 @@
   "description": "React frontend using Vite and ESLint",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp -r ./src/utils ./dist",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },

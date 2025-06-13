@@ -14,7 +14,7 @@ RUN npm install && \
 
 # Copy the rest of the application
 COPY --chown=appuser:appgroup . .
-
+COPY ./src/utils /app/dist/utils
 # Switch to non-root user
 USER appuser
 

@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useLocation } from 'react-router-dom';
+
 // For context
 import Navbar from './components/NavBar';
 import Banner from './components/Banner';
@@ -27,6 +29,7 @@ import AdminConsole from './components/UserManagement';
 
 // For verification
 import VerifyQr from './components/VerifyQr'; // Uncomment if you need this component
+import KeyGenerator from './components/KeyGenerator';
 
 // For not found and unauthorized pages
 import NotFound from './components/NotFound';
@@ -76,11 +79,17 @@ const ProtectedRoute = ({ children }) => {
 
 const AppContent = () => {
   const { user, role } = useAuth();
+  const excludedRoutes = ['/verify-qr', '/generate-keys'];
+  const isExcludedRoute = excludedRoutes.includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Banner />
-      <Navbar user={user} role={role} />
+      {!isExcludedRoute && (
+        <>
+          <Banner />
+          <Navbar user={user} role={role} />
+        </>
+      )}
       <div className="container mx-auto px-4 py-8">
         <Routes>
           <Route path="/" element={<Navigate to="/home" />} />
@@ -154,7 +163,10 @@ const AppContent = () => {
           {/* For verify */}
           <Route path="/verify-qr" element={
             // Public route, no auth required
-              <VerifyQr />
+            <VerifyQr />
+          } />
+          <Route path="/generate-keys" element={
+            <KeyGenerator />
           } />
 
           {/* For admin */}
