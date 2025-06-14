@@ -24,13 +24,14 @@ router.get('/unverified-users/:userId',
     getUnverifiedUsersbyId
 );
 
-router.post('/certificate',
+router.post('/certificates/self-signed',
     authenticate,
     authorize('sign_certificate', {
         requiredRoles: ROLES.POLICE,
         checkOfficeScope: true,
         targetOfficeName: 'BCA'
     }),
+    upload, 
     submitCertificateRequest
 );
 

@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper';
-import fs from 'fs';
+
 const convertPEMToDER = (pemKey) => {
     // Remove the PEM headers and footers
     const base64Key = pemKey

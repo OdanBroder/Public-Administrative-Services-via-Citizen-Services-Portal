@@ -76,7 +76,7 @@ INSERT INTO RolePermissions (role_id, permission_id) VALUES
 -- BCA permissions
 INSERT INTO RolePermissions (role_id, permission_id) VALUES
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'view_bca_applications')),
-((SELECT id FROM Roles WHERE name = 'Police'), (SELECT id FROM Permissions WHERE name = 'submit_certificate')),
+((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'submit_certificate')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'process_bca_applications')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'manage_applications')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'process_request'));
@@ -97,10 +97,10 @@ INSERT INTO services (name, description, status, office_id, application_url) VAL
 ('Đăng ký khai sinh', 'Dịch vụ đăng ký khai sinh trực tuyến', 'active', (SELECT id FROM Offices WHERE name = 'Birth Certificate Authority'), '/ubnd/dang-ky-khai-sinh');
 
 -- Insert initial service health records
-INSERT INTO service_health (service_id, status, response_time, uptime, last_checked) VALUES
-(1, 'UP', 150, 99.9, NOW()),
-(2, 'UP', 120, 99.8, NOW()),
-(3, 'UP', 100, 99.95, NOW()),
-(3, 'UP', 180, 99.7, NOW()),
-(3, 'UP', 200, 99.6, NOW());
+-- INSERT INTO service_health (service_id, status, response_time, uptime, last_checked) VALUES
+-- (1, 'UP', 150, 99.9, NOW()),
+-- (2, 'UP', 120, 99.8, NOW()),
+-- (3, 'UP', 100, 99.95, NOW()),
+-- (3, 'UP', 180, 99.7, NOW()),
+-- (3, 'UP', 200, 99.6, NOW());
 

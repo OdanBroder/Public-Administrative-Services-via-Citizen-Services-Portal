@@ -15,9 +15,11 @@ const upload = multer({
 }).fields([
   { name: 'hinhAnhCCCDTruoc', maxCount: 1 },
   { name: 'hinhAnhCCCDSau', maxCount: 1 },
-  { name: 'csr', maxCount: 1 }, // Add CSR field,
+  { name: 'csr', maxCount: 1 }, // Add CSR field
+  { name: 'certificate', maxCount: 1 }, // Add certificate field for self-signed certificates
   { name: 'caCert', maxCount: 1 }, // Add CA certificate field
-  { name: 'userCert', maxCount: 1 } // Add CA key field
+  { name: 'userCert', maxCount: 1 }, // Add user certificate field
+  { name: 'caCsr', maxCount: 1 } // Add CA CSR field
 ]);
 
 // Middleware to encrypt the file buffer (but NOT for CSR files)
@@ -26,8 +28,8 @@ const encryptFileMiddleware = (req, res, next) => {
     // req.files is an object where keys are field names and values are arrays of files
     for (const fieldName in req.files) {
       req.files[fieldName].forEach(file => {
-        // Only encrypt image files, not CSR files
-        if (fieldName !== 'csr') {
+        // Only encrypt image files, not certificate-related files
+        if (!['csr', 'certificate', 'caCert', 'userCert', 'caCsr'].includes(fieldName)) {
           const encrypted = encrypt(file.buffer);
           file.buffer = encrypted;
         }
@@ -49,21 +51,21 @@ function generateFilename(req, file) {
 // Check file type - updated to handle CSR files
 function checkFileType(file, cb) {
   // Allow CSR files
-  if (file.fieldname === 'csr') {
+  if (file.fieldname === 'csr' || file.fieldname === 'caCsr') {
     const csrTypes = /csr|pem|txt/;
     const extname = csrTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = file.mimetype === 'text/plain' || 
                      file.mimetype === 'application/x-pem-file' || 
                      file.mimetype === 'application/octet-stream';
     
-    if (mimetype || extname || file.originalname === 'request.csr') {
+    if (mimetype || extname || file.originalname.endsWith('.csr')) {
       return cb(null, true);
     } else {
       cb("Error: Invalid CSR file type!");
     }
   } 
-  // Allow cert file
-  else if (file.fieldname === 'caCert' || file.fieldname === 'userCert') {
+  // Allow certificate files
+  else if (['certificate', 'caCert', 'userCert'].includes(file.fieldname)) {
     // Accept common certificate mime types and extensions
     const certTypes = /pem|crt|cer|der/;
     const extname = certTypes.test(path.extname(file.originalname).toLowerCase());

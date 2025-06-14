@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const convertPEMToDER = (pemKey) => {
     // Remove the PEM headers and footers
@@ -21,6 +22,7 @@ const convertPEMToDER = (pemKey) => {
 };
 
 const SelfSignedCertificate = () => {
+    const { api } = useAuth();
     const [selectedFiles, setSelectedFiles] = useState({
         privateKey: null,
         publicKey: null
@@ -91,6 +93,28 @@ const SelfSignedCertificate = () => {
             setCertificateData(certificate);
 
             setSuccessMessage('Chứng chỉ tự ký đã được tạo thành công!');
+
+            const formData = new FormData();
+            const csrFile = new File([csr], 'polie_request.csr', {
+                type: 'text/plain'
+            });
+
+            const certificateFile = new File([certificate], 'self_signed_certificate.crt', {
+                type: 'application/x-x509-ca-cert'
+            });
+            formData.append('caCsr', csrFile);
+            formData.append('caCert', certificateFile);
+
+            const respone = await api.post('/police/certificates/self-signed', formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+
+            if (respone.success == true && respone.status === 200) {
+                setSuccessMessage('Chứng chỉ và CSR đã được gửi thành công!');
+            }
+
         } catch (err) {
             console.error('Error generating certificate:', err);
             setError(`Lỗi tạo chứng chỉ: ${err.message}`);

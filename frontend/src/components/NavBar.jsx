@@ -57,12 +57,6 @@ const Navbar = ({ user, role }) => {
                 >
                   Bảo hiểm Y tế
                 </Link>
-                <Link
-                  to="/birth-registration"
-                  className="px-3 py-2 rounded-md text-md font-medium text-yellow-100 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-yellow focus:ring-theme-red-dark transition-colors"
-                >
-                  Tra cứu tình trạng thủ tục giấy khai sinh
-                </Link>
               </>
             )}
           </div>

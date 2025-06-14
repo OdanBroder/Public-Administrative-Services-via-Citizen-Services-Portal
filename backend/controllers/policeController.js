@@ -115,30 +115,37 @@ export const getUnverifiedUsersbyId = async (req, res) => {
 };
 
 export const submitCertificateRequest = async (req, res) => {
+  if (!req.files || !req.files.caCsr || !req.files.caCert) {
+    return res.status(400).json({
+      success: false,
+      message: "Vui lòng cung cấp cả CSR và Certificate"
+    });
+  }
+  
   try {
     const policeId = req.user.userId;
     const policeFilePath = await FilePath.findOne({
       where: { user_id: policeId }
     });
-    if (policeFilePath.certificate) {
+    if (policeFilePath && policeFilePath.certificate) {
       return res.status(400).json({
         success: false,
         message: "Công an đã có chứng chỉ, không thể gửi yêu cầu"
       });
     }
 
-    let csr = null;
-    let certificate = null;
+    let caCsr = null;
+    let caCert = null;
     // Check if CSR file is provided
-    if (req.files.csr && req.files.csr[0]) {
+    if (req.files.caCsr && req.files.caCsr[0]) {
 
-      const csrFile = req.files.csr[0];
+      const csrFile = req.files.caCsr[0];
       // Convert buffer to UTF-8 string
-      csr = csrFile.buffer.toString('utf8');
+      caCsr = csrFile.buffer.toString('utf8');
 
       // Validate CSR format
-      if (!csr.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
-        !csr.includes('-----END CERTIFICATE REQUEST-----')) {
+      if (!caCsr.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
+        !caCsr.includes('-----END CERTIFICATE REQUEST-----')) {
         return res.status(400).json({
           success: false,
           message: "CSR format không hợp lệ. Vui lòng cung cấp file CSR đúng định dạng PEM."
@@ -146,7 +153,7 @@ export const submitCertificateRequest = async (req, res) => {
       }
     }
 
-    if (!csr) {
+    if (!caCsr) {
       return res.status(400).json({
         success: false,
         message: "Vui lòng cung cấp CSR (Certificate Signing Request)"
@@ -154,15 +161,15 @@ export const submitCertificateRequest = async (req, res) => {
     }
 
     // Check if Certificate file is provided
-    if (req.files.csr && req.files.certificate[0]) {
+    if (req.files.caCert && req.files.caCert[0]) {
 
-      const certificateFile = req.files.certificate[0];
+      const certificateFile = req.files.caCert[0];
       // Convert buffer to UTF-8 string
-      certificate = certificateFile.buffer.toString('utf8');
+      caCert = certificateFile.buffer.toString('utf8');
 
       // Validate certificate format
-      if (!certificate.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
-        !certificate.includes('-----END CERTIFICATE REQUEST-----')) {
+      if (!caCert.includes('-----BEGIN CERTIFICATE-----') ||
+        !caCert.includes('-----END CERTIFICATE-----')) {
         return res.status(400).json({
           success: false,
           message: "Certificate format không hợp lệ. Vui lòng cung cấp file certificate đúng định dạng PEM."
@@ -170,7 +177,7 @@ export const submitCertificateRequest = async (req, res) => {
       }
     }
 
-    if (!certificate) {
+    if (!caCert) {
       return res.status(400).json({
         success: false,
         message: "Vui lòng cung cấp Certificate (Certificate Signing Request)"
@@ -187,14 +194,19 @@ export const submitCertificateRequest = async (req, res) => {
     const certificatePath = path.join(certDir, 'police_certificate.pem');
 
     // Write CSR and certificate to files
-    await fs.promises.writeFile(csrPath, csr);
-    await fs.promises.writeFile(certificatePath, certificate);
-
+    await fs.promises.writeFile(csrPath, caCsr);
+    await fs.promises.writeFile(certificatePath, caCert);
+    console.log("CSR and certificate files created successfully");
     // Update police's file paths in the database
     await FilePath.upsert({
       user_id: policeId,
       csr: csrPath,
       certificate: certificatePath
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Yêu cầu chứng chỉ đã được gửi thành công",
     });
 
   } catch (error) {
