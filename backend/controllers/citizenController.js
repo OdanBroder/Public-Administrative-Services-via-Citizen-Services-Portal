@@ -268,3 +268,83 @@ export const getCitizenById = async (req, res) => {
     });
   }
 };
+
+export const getMyCsr = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Find the citizen record
+    const citizen = await Citizen.findByPk(userId);
+    if (!citizen) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin công dân",
+      });
+    }
+
+    // Find the file path record
+    const filePath = await FilePath.findOne({ where: { user_id: userId } });
+    if (!filePath || !filePath.csr) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy csr",
+      });
+    }
+
+    // Read and decrypt the CSR file
+    const csr = fs.readFileSync(filePath.csr);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy csr thành công",
+      csr: csr,
+    });
+  } catch (error) {
+    console.error("Error fetching csr:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message,
+    });
+  }
+}
+
+export const getMyCert = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Find the citizen record
+    const citizen = await Citizen.findByPk(userId);
+    if (!citizen) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin công dân",
+      });
+    }
+
+    // Find the file path record
+    const filePath = await FilePath.findOne({ where: { user_id: userId } });
+    if (!filePath || !filePath.certificate) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy certificate",
+      });
+    }
+
+    // Read and decrypt the certificate file
+    const certificate = fs.readFileSync(filePath.certificate);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy certificate thành công",
+      certificate: certificate,
+    });
+  } catch (error) {
+    console.error("Error fetching certificate:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message,
+    });
+  }
+}

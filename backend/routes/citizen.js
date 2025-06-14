@@ -2,7 +2,7 @@ import {authenticate, authorize, ROLES} from '../middleware/authMiddleware.js';
 import Citizen from '../models/Citizen.js';
 import {upload, encryptFileMiddleware, generateFilename} from '../config/multerConfig.js';
 import express from 'express';
-import { createCitizen, getCitizenById } from '../controllers/citizenController.js';
+import { createCitizen, getCitizenById, getMyCsr, getMyCert } from '../controllers/citizenController.js';
 const router = express.Router();
 
 router.post("/", 
@@ -13,6 +13,18 @@ router.post("/",
   upload, 
   encryptFileMiddleware,
   createCitizen
+);
+
+router.get("/my-csr", 
+  authenticate,
+  authorize(["view_own_request"]),
+  getMyCsr
+);
+
+router.get("/my-certificate", 
+  authenticate,
+  authorize(["view_own_request"]),
+  getMyCert
 );
 
 router.get("/:id", 
