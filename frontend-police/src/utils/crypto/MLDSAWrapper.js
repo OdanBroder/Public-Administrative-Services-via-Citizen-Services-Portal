@@ -346,15 +346,31 @@ class MLDSAWrapper {
 
   /**
    * Verifies if a certificate has been issued by a given CA certificate.
-   * @param {Uint8Array} certData - The certificate data as a byte array
-   * @param {Uint8Array} caCertData - The CA certificate data as a byte array
+   * @param {Uint8Array | string } certData - The certificate data as a byte array
+   * @param {Uint8Array | string} caCertData - The CA certificate data as a byte array
    * @returns {Promise<boolean>} True if the certificate is issued by the given CA, false otherwise
    * @throws {Error} If verification process fails
    */
   async verifyCertificateIssuedByCA(certData, caCertData) {
     this._ensureInitialized();
-    // Ensure files exist in the virtual FS
-    const certPtr = this.malloc(certData.length + 1);
+    // Convert certData to Uint8Array if it's a string
+    if (typeof certData === 'string') {
+      certData = new TextEncoder().encode(certData);
+    }
+    // If certData is DER, convert to PEM Uint8Array
+    if (this._isDER(certData)) {
+      certData = this._derToPem(certData, 'CERTIFICATE');
+    }
+
+    // Convert caCertData to Uint8Array if it's a string
+    if (typeof caCertData === 'string') {
+      caCertData = new TextEncoder().encode(caCertData);
+    }
+    // If caCertData is DER, convert to PEM Uint8Array
+    if (this._isDER(caCertData)) {
+      caCertData = this._derToPem(caCertData, 'CERTIFICATE');
+    }
+   const certPtr = this.malloc(certData.length + 1);
     const caCertPtr = this.malloc(caCertData.length + 1);
     if (!certPtr || !caCertPtr) {
       if (certPtr) this.free(certPtr);
@@ -500,15 +516,26 @@ class MLDSAWrapper {
 
   /**
    * Verifies a signature using a certificate.
-   * @param {Uint8Array} certData - The certificate data as a byte array
-   * @param {Uint8Array} signatureData - The signature to verify
-   * @param {string|Uint8Array} message - The original message
+   * @param {Uint8Array | string} certData - The certificate data as a byte array
+   * @param {Uint8Array | string} signatureData - The signature to verify
+   * @param {string|Uint8Array } message - The original message
    * @returns {Promise<boolean>} True if the signature is valid, false otherwise
    * @throws {Error} If verification process fails
    */
   async verifyWithCertificate(certData, signatureData, message) {
     this._ensureInitialized();
-    
+    if (typeof certData === 'string') {
+      certData = new TextEncoder().encode(certData);
+    }
+    // If certData is DER, convert to PEM Uint8Array
+    if (this._isDER(certData)) {
+      certData = this._derToPem(certData, 'CERTIFICATE');
+    }
+
+    // Convert signatureData to Uint8Array if it's a string
+    if (typeof signatureData === 'string') {
+      signatureData = new TextEncoder().encode(signatureData);
+    }
     // Convert message to Uint8Array if it's a string
     const messageBytes = typeof message === 'string' 
       ? new TextEncoder().encode(message) 
@@ -556,14 +583,30 @@ class MLDSAWrapper {
   /**
    * Signs a certificate with a CA certificate and private key.
    * @param {Uint8Array} caPrivateKey - The CA private key as a byte array
-   * @param {Uint8Array} csrData - The CSR data as a byte array
-   * @param {Uint8Array} caCertData - The CA certificate data as a byte array
+   * @param {Uint8Array | string} csrData - The CSR data as a byte array
+   * @param {Uint8Array | string} caCertData - The CA certificate data as a byte array
    * @param {number} [days=365] - Validity period in days
    * @returns {Promise<Uint8Array>} The signed certificate as a byte array
    * @throws {Error} If certificate signing fails
    */
   async signCertificate(caPrivateKey, csrData, caCertData, days = 365) {
     this._ensureInitialized();
+
+    this._ensureInitialized();
+    if (typeof csrData === 'string') {
+      csrData = new TextEncoder().encode(csrData);
+    }
+    if (this._isDER(csrData)) {
+      csrData = this._derToPem(csrData, 'CERTIFICATE REQUEST');
+    }
+
+    // Convert caCertData to Uint8Array PEM if needed
+    if (typeof caCertData === 'string') {
+      caCertData = new TextEncoder().encode(caCertData);
+    }
+    if (this._isDER(caCertData)) {
+      caCertData = this._derToPem(caCertData, 'CERTIFICATE');
+    }
     // Allocate memory for the CA private key
     const caPrivateKeyPtr = this.malloc(caPrivateKey.length);
     const csrPtr = this.malloc(csrData.length + 1); 
@@ -645,6 +688,18 @@ class MLDSAWrapper {
   readFromVirtualFS(path) {
     this._ensureInitialized();
     return new Uint8Array(this.FS.readFile(path));
+  }
+  _isDER(data) {
+    return data instanceof Uint8Array && !(new TextDecoder().decode(data).includes('-----BEGIN'));
+  }
+
+  /**
+   * Helper to convert DER Uint8Array to PEM Uint8Array.
+   */
+  _derToPem(der, label) {
+    const base64 = btoa(String.fromCharCode(...der));
+    const pem = `-----BEGIN ${label}-----\n${base64.match(/.{1,64}/g).join('\n')}\n-----END ${label}-----\n`;
+    return new TextEncoder().encode(pem);
   }
 }
 

@@ -259,27 +259,43 @@ export const signUserCertificate = async (req, res) => {
         message: "Người dùng đã có chứng chỉ"
       });
     }
-
+    let caCert = null;
     const caCertpath = policeFilePath.certificate;
     // Read CA certificate
-    const caCert = await fs.promises.readFile(caCertpath, 'utf8');
+    if(req.files && req.files.caCert && req.files.caCert[0]) {
+      const caCertFile = req.files.caCert[0];
+      // Convert buffer to UTF-8 string
+      caCert = caCertFile.buffer.toString('utf8');
+
+      // Validate CA certificate format
+      if (!caCert.includes('-----BEGIN CERTIFICATE-----') ||
+        !caCert.includes('-----END CERTIFICATE-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "CA certificate format không hợp lệ. Vui lòng cung cấp file CA certificate đúng định dạng PEM."
+        });
+      }
+    }
     
     let userCert = null;
+    // console.log("req.files.userCert", req);
+    if (req.files && req.files.userCert[0]) {
 
-    if (req.files.userCert && req.files.userCert[0]) {
-
-      const userCertFile = req.files.caCert[0];
+      const userCertFile = req.files.userCert[0];
       // Convert buffer to UTF-8 string
       userCert = userCertFile.buffer.toString('utf8');
 
       // Validate CSR format
-      if (!userCert.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
-        !userCert.includes('-----END CERTIFICATE REQUEST-----')) {
+      if (!userCert.includes('-----BEGIN CERTIFICATE-----') ||
+        !userCert.includes('-----END CERTIFICATE-----')) {
         return res.status(400).json({
           success: false,
           message: "Certificate format của người dân không hợp lệ. Vui lòng cung cấp file certificate đúng định dạng PEM."
         });
       }
+    }
+    else {
+      throw new Error('Vui lòng cung cấp certificate của người dân');
     }
 
     if (!userCert) {
@@ -288,7 +304,8 @@ export const signUserCertificate = async (req, res) => {
         message: "Vui lòng cung cấp certificate của người dân"
       });
     }
-
+    // console.log("userCert", userCert);
+    // console.log("caCert", caCert);
     const signed = await mldsa_wrapper.verifyCertificateIssuedByCA(userCert, caCert);
 
     if (!signed) {

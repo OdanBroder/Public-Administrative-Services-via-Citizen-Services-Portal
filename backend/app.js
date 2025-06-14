@@ -44,10 +44,18 @@ app.get('/health', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    const errorInfo = {
+        method: req.method,
+        url: req.originalUrl,
+        body: req.body,
+        stack: err && err.stack ? err.stack : undefined,
+        message: err && err.message ? err.message : undefined,
+        error: err
+    };
+    console.log('Error Info:', errorInfo);
     res.status(500).json({
         error: 'Something went wrong!',
-        message: config.nodeEnv === 'development' ? err.message : undefined
+        message: config.nodeEnv === 'development' ? err.message : err.message
     });
 });
 

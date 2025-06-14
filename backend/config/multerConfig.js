@@ -15,7 +15,9 @@ const upload = multer({
 }).fields([
   { name: 'hinhAnhCCCDTruoc', maxCount: 1 },
   { name: 'hinhAnhCCCDSau', maxCount: 1 },
-  { name: 'csr', maxCount: 1 } // Add CSR field
+  { name: 'csr', maxCount: 1 }, // Add CSR field,
+  { name: 'caCert', maxCount: 1 }, // Add CA certificate field
+  { name: 'userCert', maxCount: 1 } // Add CA key field
 ]);
 
 // Middleware to encrypt the file buffer (but NOT for CSR files)
@@ -59,7 +61,24 @@ function checkFileType(file, cb) {
     } else {
       cb("Error: Invalid CSR file type!");
     }
-  } else {
+  } 
+  // Allow cert file
+  else if (file.fieldname === 'caCert' || file.fieldname === 'userCert') {
+    // Accept common certificate mime types and extensions
+    const certTypes = /pem|crt|cer|der/;
+    const extname = certTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = file.mimetype === 'application/x-x509-ca-cert' ||
+                     file.mimetype === 'application/pkix-cert' ||
+                     file.mimetype === 'application/x-pem-file' ||
+                     file.mimetype === 'application/octet-stream' ||
+                     file.mimetype === 'text/plain';
+    if (mimetype || extname) {
+      return cb(null, true);
+    } else {
+      cb("Error: Invalid certificate file type!");
+    }
+  }
+  else {
     // Handle image files
     const filetypes = /jpeg|jpg|png|gif/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());

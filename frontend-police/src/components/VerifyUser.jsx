@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper';
-
+import fs from 'fs';
 const convertPEMToDER = (pemKey) => {
     // Remove the PEM headers and footers
     const base64Key = pemKey
@@ -105,15 +105,19 @@ const VerifyUserPage = () => {
             const csrData = convertPEMToDER(csrContent);
 
             const signedCertificate = await Mldsa_wrapper.signCertificate(privateKeyPolice, csrData, certificatePolice);
-
+            // fs.writeFileSync('signedCertificate.pem', signedCertificate);
             if (!signedCertificate) {
                 showToast('Lỗi khi ký chứng chỉ', 'error');
                 return;
             }
-
+            console.log('Signed Certificate:', (new TextDecoder()).decode(signedCertificate));
             const formData = new FormData();
             formData.append('userCert', new Blob([signedCertificate], { type: 'application/x-x509-ca-cert' }));
-            const response = await api.post(`/police/sign-certificate/${userId}`, formData);
+            formData.append('caCert', new Blob([certificateContent], { type: 'application/x-x509-ca-cert' }));
+            const response = await api.post(`/police/sign-certificate/${userId}`, formData,{
+                headers : {
+                    'Content-Type': undefined}
+            });
 
             if (response.data.success) {
                 showToast(`Successfully verified user`, 'success');

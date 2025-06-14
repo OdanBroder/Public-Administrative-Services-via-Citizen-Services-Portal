@@ -1,7 +1,7 @@
 import express from 'express';
 import { getUnverifiedUsers, getUnverifiedUsersbyId, submitCertificateRequest, signUserCertificate } from '../controllers/policeController.js';
 import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
-
+import { upload } from '../config/multerConfig.js';
 const router = express.Router();
 
 router.get('/unverified-users',
@@ -41,6 +41,7 @@ router.post('/sign-certificate/:userId',
         checkOfficeScope: true,
         targetOfficeName: 'BCA'
     }),
+    upload,
     signUserCertificate
 );
 

@@ -124,65 +124,74 @@ bool verify_mldsa65(const char *public_key_chr, const char *signature_path, cons
     }
 }
 
-bool verify_signature_with_cert(const char *certificate_path_chr, const char *signature_path, const char *message_chr, int message_len){
-    X509_ptr cert = load_certificate(certificate_path_chr);
-    if (!cert) {
+bool verify_signature_with_cert(const char *certificate_buf, size_t certificate_len, const unsigned char *signature_buf, size_t signature_len, const char *message_chr, int message_len) {
+    // Load certificate from buffer
+    BIO_ptr cert_bio(BIO_new_mem_buf(certificate_buf, static_cast<int>(certificate_len)), BIO_free_all);
+    if (!cert_bio) {
+        handle_openssl_error("BIO_new_mem_buf for certificate");
         return false;
     }
+    X509* cert_raw = PEM_read_bio_X509(cert_bio.get(), nullptr, nullptr, nullptr);
+    if (!cert_raw) {
+        handle_openssl_error("PEM_read_bio_X509");
+        return false;
+    }
+    X509_ptr cert(cert_raw, X509_free);
 
     // Extract the public key from the certificate
     EVP_PKEY* pkey_raw = X509_get_pubkey(cert.get());
-     if (!pkey_raw) {
+    if (!pkey_raw) {
         handle_openssl_error("X509_get_pubkey for verification");
         return false;
     }
-    EVP_PKEY_ptr pkey(pkey_raw, EVP_PKEY_free); // Corrected init
+    EVP_PKEY_ptr pkey(pkey_raw, EVP_PKEY_free);
+
     char_ptr temp_pubkey = std::make_unique<char[]>(ml_dsa_65_public_key_size);
-    // Determine the key type and call the appropriate verification function
-    int key_type = EVP_PKEY_base_id(pkey.get());
     size_t public_key_size = ml_dsa_65_public_key_size;
-    if(!EVP_PKEY_get_raw_public_key(pkey.get(), (unsigned char*) temp_pubkey.get(), &public_key_size)) {
+    if (!EVP_PKEY_get_raw_public_key(pkey.get(), (unsigned char*) temp_pubkey.get(), &public_key_size)) {
         handle_openssl_error("EVP_PKEY_get_raw_public_key for verification");
         return false;
     }
 
+    // Prepare message data
+    std::vector<unsigned char> message_data(message_chr, message_chr + message_len);
 
-    bool result = false;
-    result = verify_mldsa65(temp_pubkey.get(), signature_path,  message_chr, message_len);  
+    EVP_PKEY_ptr verify_pkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_ML_DSA_65, nullptr, (const unsigned char*)temp_pubkey.get(), ml_dsa_65_public_key_size), EVP_PKEY_free);
+    if (!verify_pkey) {
+        handle_openssl_error("EVP_PKEY_new_raw_public_key for verification");
+        return false;
+    }
 
-    // if (key_type == EVP_PKEY_EC) {
-    //     std::cout << "Verifying using ECDSA (key from certificate)..." << std::endl;
-    //     result = verify_mldsa65(temp_pubkey.get(), signature_path,  message_chr, message_len);  
-    // } else {
-    //     std::cerr << "Error: Unsupported key type in certificate for verification (" << OBJ_nid2sn(key_type) << ")." << std::endl;
-    //     result = false;
-    // }
+    EVP_MD_CTX_ptr md_ctx(EVP_MD_CTX_new(), EVP_MD_CTX_free);
+    if (!md_ctx) {
+        handle_openssl_error("EVP_MD_CTX_new for verification");
+        return false;
+    }
 
-    // Clean up the temporary file
+    if (EVP_DigestVerifyInit(md_ctx.get(), nullptr, NULL, nullptr, verify_pkey.get()) <= 0) {
+        handle_openssl_error("EVP_DigestVerifyInit");
+        return false;
+    }
 
-    return result;
+    int verify_result = EVP_DigestVerify(md_ctx.get(), signature_buf, signature_len, (unsigned char*)message_chr, message_len);
+    if (verify_result == 1) {
+        return true; 
+    } else if (verify_result == 0) {
+        std::cerr << "Verification failed: Signature is invalid." << std::endl;
+        return false;
+    } else {
+        handle_openssl_error("EVP_DigestVerifyFinal");
+        return false;
+    }
 }
 
-bool verify_certificate_issued_by_ca(const char* CertPath, const char* CACertPath) {
-    // Read certificate file into memory
-    std::ifstream cert_file(CertPath, std::ios::binary);
-    if (!cert_file) {
-        std::cerr << "Failed to open certificate file: " << CertPath << std::endl;
-        return false;
-    }
-    std::string cert_pem((std::istreambuf_iterator<char>(cert_file)), std::istreambuf_iterator<char>());
-
-    // Read CA certificate file into memory
-    std::ifstream ca_file(CACertPath, std::ios::binary);
-    if (!ca_file) {
-        std::cerr << "Failed to open CA certificate file: " << CACertPath << std::endl;
-        return false;
-    }
-    std::string ca_pem((std::istreambuf_iterator<char>(ca_file)), std::istreambuf_iterator<char>());
-
-    // Create BIOs from memory
-    BIO_ptr cert_bio(BIO_new_mem_buf(cert_pem.data(), static_cast<int>(cert_pem.size())), BIO_free_all);
-    BIO_ptr ca_bio(BIO_new_mem_buf(ca_pem.data(), static_cast<int>(ca_pem.size())), BIO_free_all);
+bool verify_certificate_issued_by_ca(
+    const char* cert_buf, size_t cert_buf_len,
+    const char* ca_cert_buf, size_t ca_cert_buf_len
+) {
+    // Create BIOs from memory buffers
+    BIO_ptr cert_bio(BIO_new_mem_buf(cert_buf, static_cast<int>(cert_buf_len)), BIO_free_all);
+    BIO_ptr ca_bio(BIO_new_mem_buf(ca_cert_buf, static_cast<int>(ca_cert_buf_len)), BIO_free_all);
     if (!cert_bio || !ca_bio) {
         handle_openssl_error("BIO_new_mem_buf for certificate or CA");
         return false;
@@ -230,7 +239,6 @@ bool verify_certificate_issued_by_ca(const char* CertPath, const char* CACertPat
         result = (verify_result == 1);
         if (!result) {
             handle_openssl_error("X509_verify_cert by CA");
-            // Optionally print error
             int err = X509_STORE_CTX_get_error(ctx);
             std::cerr << "Certificate verification failed: " << X509_verify_cert_error_string(err) << std::endl;
         }
