@@ -177,6 +177,7 @@ bool verify_signature_with_cert(const char *certificate_buf, size_t certificate_
     if (verify_result == 1) {
         return true; 
     } else if (verify_result == 0) {
+        handle_openssl_error("EVP_DigestVerifyFinal for verification");
         std::cerr << "Verification failed: Signature is invalid." << std::endl;
         return false;
     } else {

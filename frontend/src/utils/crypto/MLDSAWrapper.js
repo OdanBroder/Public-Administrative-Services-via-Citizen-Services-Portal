@@ -389,13 +389,21 @@ class MLDSAWrapper {
 
   /**
    * Signs a message using ML-DSA-65.
-   * @param {Uint8Array} privateKey - The private key as a byte array
+   * @param {Uint8Array | string} privateKey - The private key as a byte array
    * @param {string|Uint8Array} message - The message to sign
    * @returns {Promise<Uint8Array>} The signature as a byte array
    * @throws {Error} If signing fails
    */
   async sign(privateKey, message) {
     this._ensureInitialized();
+      if (typeof privateKey === 'string') {
+      // Convert PEM string to Uint8Array DER
+      privateKey = this._pemToDer(privateKey, 'PRIVATE KEY');
+    } else if (privateKey instanceof Uint8Array && this._isPEM(privateKey)) {
+      // If privateKey is Uint8Array but contains PEM, convert to DER
+      const pemStr = new TextDecoder().decode(privateKey);
+      privateKey = this._pemToDer(pemStr, 'PRIVATE KEY');
+    }
     // Allocate memory for the private key
     const privateKeyPtr = this.malloc(privateKey.length);
     const signaturePtr = this.malloc(1024 * 1024);
@@ -672,6 +680,32 @@ class MLDSAWrapper {
     const base64 = btoa(String.fromCharCode(...der));
     const pem = `-----BEGIN ${label}-----\n${base64.match(/.{1,64}/g).join('\n')}\n-----END ${label}-----\n`;
     return new TextEncoder().encode(pem);
+  }
+  _isPEM(data) {
+    if (!(data instanceof Uint8Array)) return false;
+    const str = new TextDecoder().decode(data);
+    return str.includes('-----BEGIN');
+  }
+
+  /**
+   * Helper to convert PEM string to DER Uint8Array.
+   * @private
+   */
+  _pemToDer(pem, label) {
+    const pemHeader = `-----BEGIN ${label}-----`;
+    const pemFooter = `-----END ${label}-----`;
+    const pemStr = typeof pem === 'string' ? pem : new TextDecoder().decode(pem);
+    const base64 = pemStr
+      .replace(pemHeader, '')
+      .replace(pemFooter, '')
+      .replace(/[\r\n]/g, '')
+      .trim();
+    const binary = atob(base64);
+    const der = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      der[i] = binary.charCodeAt(i);
+    }
+    return der;
   }
 }
 

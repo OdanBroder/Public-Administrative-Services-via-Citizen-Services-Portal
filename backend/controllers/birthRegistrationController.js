@@ -1,5 +1,5 @@
 import BirthRegistration from '../models/BirthRegistration.js';
-import crypto from 'crypto';
+import crypto, { sign } from 'crypto';
 import tpmService from '../utils/crypto/tpmController.js';
 import path from 'path';
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
@@ -82,6 +82,15 @@ export const createBirthRegistration = async (req, res) => {
         error: "Vui lòng điền đầy đủ thông tin mẹ"
       });
     }
+    
+    if(!req.files || !req.files.signature[0]) {
+      // console.error("Signature file is missing or not provided", req.files);
+      // console.error(req);
+      return res.status(400).json({
+        success: false,
+        message: "Chữ ký không hợp lệ hoặc không được cung cấp"
+      });
+    }
 
     const birthApplicationData = {
       applicantId,
@@ -125,69 +134,66 @@ export const createBirthRegistration = async (req, res) => {
 
     delete birthApplicationData.status; // Remove status from the data to be signed
 
-    const message_tmp = JSON.stringify(birthApplicationData);
+    if(req.files && req.files.signature) {
+      const signatureFile = req.files.signature[0];
+      if (!signatureFile) {
+        return res.status(400).json({
+          success: false,
+          message: "Chữ ký không hợp lệ hoặc không được cung cấp"
+        });
+      }
 
-    const userFilePath = await FilePath.findOne({
-      where: { user_id: req.user.id }
-    });
+      // Read the signature file
+      const signature = signatureFile.buffer.toString('utf8');
 
-    if (!userFilePath || !userFilePath.private_key) {
-      throw new Error('Không tìm thấy private key của người dùng. Vui lòng tạo key pair trước.');
-    }
+      // Create a message to sign
+      const clone = birthApplicationData;
+      delete clone.status;
+      const message = JSON.stringify(clone);
+      // Verify the signature using the user's certificate
+      const userPath = await FilePath.findOne({
+        where: { user_id: applicantId },
+        attributes: ['certificate']
+      });
 
-    // Create message and sign by private key
-    const message = crypto.createHash('sha512').update(message_tmp).digest('hex');
+      if (!userPath || !userPath.certificate) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy chứng chỉ cho người nộp đơn"
+        });
+      }
 
-    // Decrypt private key
-    const privateKeyContent = await tpmService.decryptWithRootKey(
-      await fs.promises.readFile(userFilePath.private_key, 'utf8')
-    );
+      const certData = fs.readFileSync(userPath.certificate, 'utf8');
+      const sigData = Buffer.from(signature, 'base64');
 
-    // Get base application directory from FilePath
-    const applicationDir = path.join(userFilePath.application, 'birthRegistrations', birthApplication_new.id.toString());
-    const sigDir = path.join(applicationDir, 'sig');
-    const messageDir = path.join(applicationDir, 'message');
-
-    try {
-      // Create directories
-      await fs.promises.mkdir(sigDir, { recursive: true });
-      await fs.promises.mkdir(messageDir, { recursive: true });
-
-      // Define file paths
-      const sigPath = path.join(sigDir, 'signature.bin');
-      const messagePath = path.join(messageDir, 'message.txt');
-
-      // Sign the message
-      const signature = await Mldsa_wrapper.sign(
-        privateKeyContent,
-        message,
-        sigPath
+      // Verify the signature
+      // console.log("Message:", message);
+      // console.log("Certificate:", certData);
+      console.log("Signature Data:", sigData.toString('base64'));
+      const is_verified = await Mldsa_wrapper.verifyWithCertificate(
+        certData,
+        sigData,
+        message
       );
 
-      if (!signature) {
-        throw new Error('Failed to create signature');
-      } 
-
-
-      // Save message and metadata
-      await fs.promises.writeFile(messagePath, message);
-      const msg_load = await fs.promises.readFile(messagePath);
-      console.log("Message:", msg_load.toString());
-      console.log("Certificate Path:", userFilePath.certificate);
-      console.log("Signature Path:", sigPath);
-      const verified = await Mldsa_wrapper.verifyWithCertificate(msg_load, userFilePath.certificate, sigPath);
-      if (!verified) {
-        throw new Error('Signature verification failed');
+      if (!is_verified) {
+        return res.status(400).json({
+          success: false,
+          message: "Xác minh chữ ký thất bại"
+        });
       }
-      // Update the birth registration with file paths
+      const applicationPath = FilePath.findOne({
+        where: { user_id: applicantId }});      // Save the file path and signature to the birth registration
+      const sigPath = path.join(applicationPath.file_path, 'sig', 'signature.bin');
+      const messagePath = path.join(applicationPath.file_path, 'message', 'message.txt');
+      await fs.promises.writeFile(sigPath, signature); // Save the signature file in base64
+      await fs.promises.writeFile(messagePath, message);
       await birthApplication_new.update({
-        file_path: applicationDir
+        file_path: applicationPath.file_path,
+        status: 'pending',
       });
     }
-    catch (error) {
-      console.error("Signing failed: ", error);
 
-    }
     res.status(201).json({
       success: true,
       message: "Đăng ký khai sinh thành công",

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-
+import Mldsa_wrapper, { MLDSAWrapper } from "../utils/crypto/MLDSAWrapper";
 const BirthRegistrationForm = () => {
   const { user, api } = useAuth();
   const navigate = useNavigate();
@@ -51,14 +51,23 @@ const BirthRegistrationForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [submitStatus, setSubmitStatus] = useState({ type: "", message: "" });
 
+  const [selectedFiles, setSelectedFiles] = useState({
+    privateKey: null,
+  });
+
+  const [previewUrls, setPreviewUrls] = useState({
+
+    privateKey: "",
+  });
+
+
   if (!user) {
     navigate("/login");
   }
 
   useEffect(() => {
     fetchCitizenData(user.id);
-
-  }, [])
+  }, []);
   // Handle input change for all form fields
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -70,6 +79,7 @@ const BirthRegistrationForm = () => {
 
   // Fetch citizen data for auto-fill
   const fetchCitizenData = async (cID) => {
+    // console.log("Fetching citizen data for ID:", cID);
     if (!cID) {
       setSubmitStatus({
         type: "error",
@@ -83,10 +93,9 @@ const BirthRegistrationForm = () => {
 
     try {
       const response = await api.get(`/citizen/${cID}`);
-
-      if (response.success) {
+      // console.log("Citizen data response:", response.data);
+      if (response.data.success) {
         const citizen = response.data.data;
-
         // Auto-fill applicant information
         setFormData({
           ...formData,
@@ -108,8 +117,9 @@ const BirthRegistrationForm = () => {
       console.error("Error fetching citizen data:", error);
       setSubmitStatus({
         type: "error",
-        message: `Lỗi: ${error.response?.data?.message || "Không thể tải thông tin công dân"
-          }`,
+        message: `Lỗi: ${
+          error.response?.data?.message || "Không thể tải thông tin công dân"
+        }`,
       });
     } finally {
       setIsLoading(false);
@@ -139,12 +149,30 @@ const BirthRegistrationForm = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    if(previewUrls.privateKey === "" || !validatePrivateKey(previewUrls.privateKey)) {
+      setSubmitStatus({
+        type: "error",
+        message: "Vui lòng tải lên file Private Key hợp lệ.",
+      });
+      return;
+    }
     setIsLoading(true);
     setSubmitStatus({ type: "", message: "" });
-
     try {
-      const response = await api.post("/birth-registration", formData);
+      const signature = await signApplication();
+      const formDataToSend = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataToSend.append(key, value);
+      });
+
+      // Encode signature to base64 and append as a file
+      const signatureBase64 = btoa(String.fromCharCode(...signature));
+      const signatureBlob = new Blob([signatureBase64], { type: "text/plain" });
+      formDataToSend.append("signature", signatureBlob, "signature.txt");
+
+      const response = await api.post("/birth-registration", formDataToSend,{
+          headers: { 'Content-Type': undefined }}
+      );
 
       if (response.data.success) {
         setSubmitStatus({
@@ -192,15 +220,64 @@ const BirthRegistrationForm = () => {
       console.error("Error submitting form:", error);
       setSubmitStatus({
         type: "error",
-        message: `Lỗi: ${error.response?.data?.message || "Không thể gửi đơn đăng ký"
-          }`,
+        message: `Lỗi: ${
+          error.response?.data?.message || "Không thể gửi đơn đăng ký"
+        }`,
       });
+      console.error("Error details:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleFileChange = async (e) => {
+    const { name, files } = e.target;
+    if (files && files[0]) {
+      setSelectedFiles({
+        ...selectedFiles,
+        [name]: files[0],
+      });
 
+      const fileReader = new FileReader();
+      fileReader.onload = () => {
+        setPreviewUrls({
+          ...previewUrls,
+          [name]: fileReader.result, // Store the file content
+        });
+      };
+
+      // Use readAsText for .key files and readAsDataURL for images
+      if (name === "privateKey" || name === "publicKey") {
+        fileReader.readAsText(files[0]); // For .key files
+      }
+      validatePrivateKey(previewUrls.privateKey);
+    }
+  };
+
+  const validatePrivateKey = (content) => {
+    // Basic validation for PEM format
+    const pemRegex = /-----BEGIN (.*)-----[\s\S]+-----END \1-----/;
+    if (!pemRegex.test(content)) {
+      setSubmitStatus({type: "error", message: "File không phải định dạng PEM hợp lệ."});
+      return false;
+    }
+    return true;
+  }
+
+  const  signApplication = async() => {
+    const privateKeyContent = previewUrls.privateKey;
+    const message = JSON.stringify(formData);
+    console.log(message);
+    const signature = new Uint8Array(await Mldsa_wrapper.sign(privateKeyContent, message));
+    if(!signature){
+      setSubmitStatus({
+        type: "error",
+        message: "Không thể ký đơn đăng ký này"
+      })
+      throw new Error("Không thể ký đơn đăng ký này");
+    }
+    return signature;
+  }
 
   return (
     <div className="flex items-center justify-center w-h-full">
@@ -212,16 +289,15 @@ const BirthRegistrationForm = () => {
 
           {submitStatus.message && (
             <div
-              className={`mb-4 p-4 rounded-md ${submitStatus.type === "success"
+              className={`mb-4 p-4 rounded-md ${
+                submitStatus.type === "success"
                   ? "bg-green-100 text-green-800"
                   : "bg-red-100 text-red-800"
-                }`}
+              }`}
             >
               {submitStatus.message}
             </div>
           )}
-
-
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Section 1: Applicant Information */}
@@ -783,30 +859,61 @@ const BirthRegistrationForm = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+                {/* Private Key Upload Section */}
+            <div className="mb-4">
+              <label
+                htmlFor="privateKey"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Tải lên Private Key:
+              </label>
+              <input
+                type="file"
+                id="privateKey"
+                name="privateKey"
+                accept=".key"
+                onChange={handleFileChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {previewUrls.privateKey && (
+                <textarea
+                  readOnly
+                  value={previewUrls.privateKey}
+                  className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono resize-none"
+                  rows={6}
+                ></textarea>
+              )}
+            </div>
               </div>
             </div>
 
             {/* Submit Button */}
             <div className="flex justify-start">
-              <input type="checkbox" name="confirm" id="confirm" onChange={(e) => setConfirm(e.target.checked)} />
+              <input
+                type="checkbox"
+                name="confirm"
+                id="confirm"
+                onChange={(e) => setConfirm(e.target.checked)}
+              />
               <label
                 htmlFor="confirm"
                 className="inline-flex items-center text-md text-gray-700 mb-2"
               >
-                Tôi xác nhận thông tin trên là đúng sự thật và chịu trách nhiệm về thông tin đã cung cấp.
+                Tôi xác nhận thông tin trên là đúng sự thật và chịu trách nhiệm
+                về thông tin đã cung cấp.
               </label>
             </div>
             <div className="flex justify-center">
               <button
                 type="submit"
                 disabled={isLoading || !confirm}
-                className={`px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isLoading ? "bg-blue-600/60 cursor-not-allowed" : ""
-                  }`}
+                className={`px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  isLoading ? "bg-blue-600/60 cursor-not-allowed" : ""
+                }`}
               >
                 {isLoading ? "Đang xử lý..." : "Gửi đơn đăng ký khai sinh"}
               </button>
             </div>
-
           </form>
         </div>
       </div>

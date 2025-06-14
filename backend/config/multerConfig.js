@@ -19,7 +19,8 @@ const upload = multer({
   { name: 'certificate', maxCount: 1 }, // Add certificate field for self-signed certificates
   { name: 'caCert', maxCount: 1 }, // Add CA certificate field
   { name: 'userCert', maxCount: 1 }, // Add user certificate field
-  { name: 'caCsr', maxCount: 1 } // Add CA CSR field
+  { name: 'caCsr', maxCount: 1 }, // Add CA CSR field
+  { name: 'signature', maxCount: 1 } // Add signature field for signed certificates
 ]);
 
 // Middleware to encrypt the file buffer (but NOT for CSR files)
@@ -78,6 +79,19 @@ function checkFileType(file, cb) {
       return cb(null, true);
     } else {
       cb("Error: Invalid certificate file type!");
+    }
+  }
+  else if (file.fieldname === 'signature') {
+    const signatureTypes = /pem|txt/;
+    const extname = signatureTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = file.mimetype === 'text/plain' || 
+                     file.mimetype === 'application/x-pem-file' || 
+                     file.mimetype === 'application/octet-stream';
+    if (mimetype || extname ) {
+      return cb(null, true);
+    }
+    else {
+      cb("Error: Invalid signature file type!");
     }
   }
   else {

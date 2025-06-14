@@ -1,5 +1,6 @@
 import express from 'express';
 const router = express.Router();
+import { upload } from '../config/multerConfig.js';
 import {
   createBirthRegistration,
   verifyBirthRegistration,
@@ -15,6 +16,7 @@ router.post("/",
   authorize("submit_request", { 
     requiredRoles: ROLES.CITIZEN 
   }), 
+  upload,
   createBirthRegistration
 );
 
