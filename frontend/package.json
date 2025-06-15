@@ -25,6 +25,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "crypto-browserify": "^3.12.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "lucide-react": "^0.513.0",
     "pako": "^2.1.0",
     "qrcode": "^1.5.4",

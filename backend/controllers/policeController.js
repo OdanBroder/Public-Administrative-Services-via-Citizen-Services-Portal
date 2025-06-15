@@ -233,7 +233,7 @@ export const signUserCertificate = async (req, res) => {
       });
     }
 
-    // Get police's private key and certificate
+    // Get police's  certificate
     const policeFilePath = await FilePath.findOne({
       where: { user_id: policeId }
     });

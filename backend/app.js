@@ -15,6 +15,7 @@ import birthRegistrationRoutes from './routes/birthApplicationRoutes.js';
 import servicesRoutes from './routes/serviceRoute.js';
 import policeRoutes from './routes/policeRoutes.js';
 import bcaRoutes from './routes/bcaRoutes.js';
+import qrRoute from "./routes/qrVerifyRoutes.js";
 dotenv.config();
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/birth-registration', birthRegistrationRoutes);
 app.use('/api/services',  servicesRoutes)
 app.use('/api/police', policeRoutes);
 app.use('/api/bca', bcaRoutes);
+app.use('/api/qr', qrRoute);
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

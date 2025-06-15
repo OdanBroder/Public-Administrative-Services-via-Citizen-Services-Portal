@@ -346,14 +346,32 @@ class MLDSAWrapper {
 
   /**
    * Verifies if a certificate has been issued by a given CA certificate.
-   * @param {Uint8Array} certData - The certificate data as a byte array
-   * @param {Uint8Array} caCertData - The CA certificate data as a byte array
+   * @param {Uint8Array | string } certData - The certificate data as a byte array
+   * @param {Uint8Array | string} caCertData - The CA certificate data as a byte array
    * @returns {Promise<boolean>} True if the certificate is issued by the given CA, false otherwise
    * @throws {Error} If verification process fails
    */
   async verifyCertificateIssuedByCA(certData, caCertData) {
     this._ensureInitialized();
-    // Ensure files exist in the virtual FS
+    // Convert certData to Uint8Array if it's a string
+    if (typeof certData === 'string') {
+      certData = new TextEncoder().encode(certData);
+    }
+    // If certData is DER, convert to PEM Uint8Array
+    if (this._isDER(certData)) {
+      certData = this._derToPem(certData, 'CERTIFICATE');
+    }
+
+    // Convert caCertData to Uint8Array if it's a string
+    if (typeof caCertData === 'string') {
+      caCertData = new TextEncoder().encode(caCertData);
+    }
+    // If caCertData is DER, convert to PEM Uint8Array
+    if (this._isDER(caCertData)) {
+      caCertData = this._derToPem(caCertData, 'CERTIFICATE');
+    }
+/*     console.log((new TextDecoder().decode(certData)));
+    console.log((new TextDecoder().decode(caCertData))); */
     const certPtr = this.malloc(certData.length + 1);
     const caCertPtr = this.malloc(caCertData.length + 1);
     if (!certPtr || !caCertPtr) {
@@ -389,21 +407,13 @@ class MLDSAWrapper {
 
   /**
    * Signs a message using ML-DSA-65.
-   * @param {Uint8Array | string} privateKey - The private key as a byte array
+   * @param {Uint8Array} privateKey - The private key as a byte array
    * @param {string|Uint8Array} message - The message to sign
    * @returns {Promise<Uint8Array>} The signature as a byte array
    * @throws {Error} If signing fails
    */
   async sign(privateKey, message) {
     this._ensureInitialized();
-      if (typeof privateKey === 'string') {
-      // Convert PEM string to Uint8Array DER
-      privateKey = this._pemToDer(privateKey, 'PRIVATE KEY');
-    } else if (privateKey instanceof Uint8Array && this._isPEM(privateKey)) {
-      // If privateKey is Uint8Array but contains PEM, convert to DER
-      const pemStr = new TextDecoder().decode(privateKey);
-      privateKey = this._pemToDer(pemStr, 'PRIVATE KEY');
-    }
     // Allocate memory for the private key
     const privateKeyPtr = this.malloc(privateKey.length);
     const signaturePtr = this.malloc(1024 * 1024);
@@ -509,22 +519,31 @@ class MLDSAWrapper {
   /**
    * Verifies a signature using a certificate.
    * @param {Uint8Array | string} certData - The certificate data as a byte array
-   * @param {Uint8Array} signatureData - The signature to verify
-   * @param {string|Uint8Array} message - The original message
+   * @param {Uint8Array | string} signatureData - The signature to verify
+   * @param {string|Uint8Array } message - The original message
    * @returns {Promise<boolean>} True if the signature is valid, false otherwise
    * @throws {Error} If verification process fails
    */
   async verifyWithCertificate(certData, signatureData, message) {
     this._ensureInitialized();
+    if (typeof certData === 'string') {
+      certData = new TextEncoder().encode(certData);
+    }
+    // If certData is DER, convert to PEM Uint8Array
+    if (this._isDER(certData)) {
+      certData = this._derToPem(certData, 'CERTIFICATE');
+    }
+
+    // Convert signatureData to Uint8Array if it's a string
+    if (typeof signatureData === 'string') {
+      signatureData = new TextEncoder().encode(signatureData);
+    }
     
     // Convert message to Uint8Array if it's a string
     const messageBytes = typeof message === 'string' 
       ? new TextEncoder().encode(message) 
       : message;
-    const certBytes = typeof certData === 'string'
-      ? new TextEncoder().encode(certData)
-      : certData;
-    const certPtr = this.malloc(certBytes.length + 1);
+    const certPtr = this.malloc(certData.length + 1);
     const signaturePtr = this.malloc(signatureData.length + 1);
     if (!certPtr || !signaturePtr) {
       if (certPtr) this.free(certPtr);
@@ -536,11 +555,11 @@ class MLDSAWrapper {
     if (!messagePtr) {
       throw new Error("Failed to allocate memory for message");
     }
-    
+    // console.log("Certificate Data:", new TextDecoder().decode(certData));
     try {
       // Copy message to WASM memory
       this._copyToWasmMemory(messagePtr, messageBytes);
-      this._copyToWasmMemory(certPtr, certBytes);
+      this._copyToWasmMemory(certPtr, certData);
       this._copyToWasmMemory(signaturePtr, signatureData);
       
       // Verify the signature
@@ -574,6 +593,7 @@ class MLDSAWrapper {
    * @throws {Error} If certificate signing fails
    */
   async signCertificate(caPrivateKey, csrData, caCertData, days = 365) {
+    this._ensureInitialized();
 
     this._ensureInitialized();
     if (typeof csrData === 'string') {
@@ -683,34 +703,6 @@ class MLDSAWrapper {
     const base64 = btoa(String.fromCharCode(...der));
     const pem = `-----BEGIN ${label}-----\n${base64.match(/.{1,64}/g).join('\n')}\n-----END ${label}-----\n`;
     return new TextEncoder().encode(pem);
-  }
-  _isPEM(data) {
-    if (!(data instanceof Uint8Array)) return false;
-    const str = new TextDecoder().decode(data);
-    return str.includes('-----BEGIN');
-  }
-
-  /**
-   * Helper to convert PEM string to DER Uint8Array.
-   * @private
-   */
-  _pemToDer(pem) {
-  // Remove the PEM headers and footers
-  const base64Key = pem
-    .replace(/-----BEGIN [^-]+-----/, "") // Remove the BEGIN header
-    .replace(/-----END [^-]+-----/, "")   // Remove the END footer
-    .replace(/\n/g, "");                  // Remove newlines
-
-  // Decode the Base64 content
-  const binaryString = atob(base64Key);
-
-  // Convert the binary string to a Uint8Array
-  const derData = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    derData[i] = binaryString.charCodeAt(i);
-  }
-
-  return derData;
   }
 }
 

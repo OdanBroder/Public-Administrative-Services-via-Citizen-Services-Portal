@@ -1,10 +1,11 @@
 import BirthRegistration from '../models/BirthRegistration.js';
-import crypto, { sign } from 'crypto';
+import crypto from 'crypto';
 import tpmService from '../utils/crypto/tpmController.js';
 import path from 'path';
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 import FilePath from '../models/FilePath.js';
 import fs from 'fs'
+import Sigs from '../models/Sigs.js';
 // Controller to create a new birth registration
 export const createBirthRegistration = async (req, res) => {
   try {
@@ -203,7 +204,15 @@ export const createBirthRegistration = async (req, res) => {
         file_path: applicationPath.application,
         status: 'pending',
       });
+      await Sigs.create({
+        birth_registration_id: birthApplication_new.id,
+        UUID: crypto.randomUUID(),
+        type: 'requester',
+        path: sigPath
+      })
     }
+    birthApplication_new.status = "awaiting_signature"; 
+    birthApplication_new.save();
 
     res.status(201).json({
       success: true,
@@ -474,31 +483,19 @@ export const changeBirthRegistrationStatus = async (req, res) => {
 export const getBirthRegistrationSubmitterSignature = async (req, res) => {
   try {
     const { id } = req.params;
-    const birthRegistration = await BirthRegistration.findByPk(id, {
-      attributes: ['file_path']
-    });
-
-    if (!birthRegistration || !birthRegistration.file_path) {
+    const signature = await Sigs.findOne({
+      where: { birth_registration_id: id, type: 'requester' }
+    }); 
+    if (!signature) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy đăng ký khai sinh hoặc đường dẫn tệp không hợp lệ"
+        message: "Không tìm thấy chữ ký của người nộp đơn"
       });
     }
-
-    const sigPath = path.join(birthRegistration.file_path, 'sig', 'signature.bin');
-    
-    if (!fs.existsSync(sigPath)) {
-      return res.status(404).json({
-        success: false,
-        message: "Chữ ký không được tìm thấy"
-      });
-    }
-
-    const signature = await fs.promises.readFile(sigPath, 'utf8');
-
+    const signatureUrl = `https://localhost:44300/signature/requester/${signature.UUID}`;
     res.status(200).json({
       success: true,
-      data: signature
+      data: signatureUrl
     });
   } catch (error) {
     console.error("Error fetching birth registration signature:", error);

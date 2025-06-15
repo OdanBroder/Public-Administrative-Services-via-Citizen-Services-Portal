@@ -24,7 +24,7 @@ import ServiceList from './components/ServiceList';
 // For verification
 import VerifyQr from './components/VerifyQr'; // Uncomment if you need this component
 import KeyGenerator from './components/KeyGenerator';
-
+import VerifyResult from './components/VerifyResult';
 // For not found and unauthorized pages
 import NotFound from './components/NotFound';
 import { Unauthorized } from './components/UnauthorizedPage';
@@ -150,6 +150,9 @@ const AppContent = () => {
             <ProtectedRoute>
               <BirthRegistrationDetail/>
             </ProtectedRoute>
+          }></Route>
+          <Route path="/signature/requester/:uuid" element={
+            <VerifyResult/>
           }></Route>
 
           {/* For warning Page */}

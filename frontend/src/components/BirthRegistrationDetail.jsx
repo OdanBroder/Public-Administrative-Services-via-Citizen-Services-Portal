@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import QRCode from "qrcode";
-import pako from "pako";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const BirthRegistrationDetail = () => {
   const { id } = useParams();
@@ -13,38 +14,65 @@ const BirthRegistrationDetail = () => {
   const [signature, setSignature] = useState(null);
   const { api, role } = useAuth();
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
-  const qrCanvasRef = useRef(null);
+
+  const [issuerSignature, setIssuerSignature] = useState(null);
+  const [qrIssuerUrl, setQrIssuerUrl] = useState(null);
+  const pdfRef = useRef(null);
 
   useEffect(() => {
     if (signature) {
-      // Prepare the string to compress
       const sigString = typeof signature === "string" ? signature : signature?.signature || "";
-      // Compress and encode to base64
-      try {
-        const compressed = pako.deflate(sigString, { to: 'string' });
-        const compressedBase64 = btoa(
-          typeof compressed === "string"
-            ? compressed
-            : String.fromCharCode(...compressed)
-        );        
-        console.log(compressed);
-        console.log("Compressed Base64 Signature:", compressedBase64.length, sigString.length, compressed.length);
-        QRCode.toDataURL(compressedBase64)
-          .then(url => setQrCodeUrl(url))
-          .catch(err => {
-            setQrCodeUrl(null);
-            setError(`Failed to generate QR code: ${err.message}`);
-          });
-      } catch (err) {
-        setQrCodeUrl(null);
-        setError(`Compression failed: ${err.message}`);
-      }
+      QRCode.toDataURL(sigString)
+        .then(url => setQrCodeUrl(url))
+        .catch(err => setQrCodeUrl(null));
     }
   }, [signature]);
 
   useEffect(() => {
+    if (issuerSignature) {
+      const issuerSigString = typeof issuerSignature === "string" ? issuerSignature : issuerSignature?.signature || "";
+      QRCode.toDataURL(issuerSigString)
+        .then(url => setQrIssuerUrl(url))
+        .catch(err => setQrIssuerUrl(null));
+    }
+  }, [issuerSignature]);
+
+  useEffect(() => {
     fetchRegistrationDetails();
   }, [id]);
+
+  const handleExportPDF = async () => {
+    if (!pdfRef.current) return;
+    
+    try {
+      const element = pdfRef.current;
+      
+      // Use html2canvas to render the DOM node to a canvas
+      const canvas = await html2canvas(element, { 
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4"
+      });
+      
+      // Calculate width/height to fit A4
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`giay-khai-sinh-${registration?.id || ""}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Có lỗi xảy ra khi tạo PDF. Vui lòng thử lại.");
+    }
+  };
 
   const fetchRegistrationDetails = async () => {
     setLoading(true);
@@ -52,11 +80,21 @@ const BirthRegistrationDetail = () => {
 
     try {
       const response = await api.get(`/birth-registration/${id}`);
-
       const data = response.data;
+      
       const response1 = await api.get(`/birth-registration/${id}/signature`);
       const signatureData = response1.data;
-      // console.log("Signature Data:", signatureData.data);
+      
+      // Try to fetch issuer signature if available
+      try {
+        const issuerResponse = await api.get(`/birth-registration/${id}/issuer-signature`);
+        if (issuerResponse.data.success) {
+          setIssuerSignature(issuerResponse.data.data);
+        }
+      } catch (issuerErr) {
+        console.log("No issuer signature found");
+      }
+
       if (data.success || response1.data.success) {
         setRegistration(data.data);
         setSignature(signatureData.data);
@@ -73,9 +111,6 @@ const BirthRegistrationDetail = () => {
       setLoading(false);
     }
   };
-
-
-
 
   const formatDate = (dateString) => {
     try {
@@ -211,10 +246,174 @@ const BirthRegistrationDetail = () => {
                   ? "Từ chối"
                   : "Đang xử lý"}
             </span>
+            <button
+              onClick={handleExportPDF}
+              className="mb-4 ml-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Xuất PDF
+            </button>
           </div>
         </div>
 
-        {/* Applicant Information */}
+        {/* Hidden PDF Content */}
+        <div 
+          ref={pdfRef} 
+          className="fixed -left-[9999px] top-0 w-[794px] bg-white"
+          style={{ 
+            fontFamily: 'Times, "Times New Roman", serif',
+            fontSize: '14px',
+            lineHeight: '1.1',
+            color: '#000'
+          }}
+        >
+          {/* PDF Document Content */}
+          <div className="p-12 min-h-[1123px] relative">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="text-sm font-bold mb-1">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+              <div className="text-sm mb-4">Độc lập - Tự do - Hạnh phúc</div>
+              <div className="text-right text-sm mb-8">Số: ___________</div>
+              
+              <div className="text-xl font-bold mb-8">GIẤY KHAI SINH</div>
+            </div>
+
+            {/* Form Content */}
+            <div className="space-y-2 text-sm">
+              {/* Person being registered */}
+              <div className="flex">
+                <span className="w-48">Họ, chữ đệm, tên:</span>
+                <span className="flex-1 border-b border-black pb-1">{registration.registrantName}</span>
+              </div>
+              
+              <div className="flex">
+                <span className="w-48">Ngày, tháng, năm sinh:</span>
+                <span className="flex-1 border-b border-black pb-1">{formatDate(registration.registrantDob)}</span>
+              </div>
+              
+              <div className="flex">
+                <span className="w-48"></span>
+                <span className="flex-1 border-b border-black pb-1">bằng chữ: {registration.registrantDobInWords}</span>
+              </div>
+              
+              <div className="flex">
+                <span className="w-48">Giới tính:</span>
+                <span className="w-32 border-b border-black pb-1">{registration.registrantGender === "male" ? "Nam" : "Nữ"}</span>
+                <span className="w-24 ml-8">Dân tộc:</span>
+                <span className="flex-1 border-b border-black pb-1">{registration.registrantEthnicity}</span>
+              </div>
+              
+              <div className="flex">
+                <span className="w-48">Nơi sinh:</span>
+                <span className="flex-1 border-b border-black pb-1">{registration.registrantBirthPlace}</span>
+              </div>
+              
+              <div className="flex">
+                <span className="w-48">Quê quán:</span>
+                <span className="flex-1 border-b border-black pb-1">{registration.registrantHometown}</span>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex">
+                  <span className="w-48">Số định danh cá nhân:</span>
+                  <span className="flex-1 border-b border-black pb-1"></span>
+                </div>
+              </div>
+
+              {/* Mother information */}
+              <div className="mt-4">
+                <div className="flex">
+                  <span className="w-48">Họ, chữ đệm, tên của người mẹ:</span>
+                  <span className="flex-1 border-b border-black pb-1">{registration.motherName}</span>
+                </div>
+                
+                <div className="flex mt-4">
+                  <span className="w-48">Năm sinh:</span>
+                  <span className="w-32 border-b border-black pb-1">{formatDate(registration.motherDob)?.split('/')[2] || ""}</span>
+                  <span className="w-16 ml-2">Dân tộc:</span>
+                  <span className="w-24 border-b border-black pb-1">{registration.motherEthnicity}</span>
+                  <span className="w-16 ml-2">Quốc tịch:</span>
+                  <span className="flex-1 border-b border-black pb-1">{registration.motherNationality}</span>
+                </div>
+                
+                <div className="flex mt-4">
+                  <span className="w-48">Nơi cư trú:</span>
+                  <span className="flex-1 border-b border-black pb-1">{registration.motherAddress}</span>
+                </div>
+              </div>
+
+              {/* Father information */}
+              <div className="mt-4">
+                <div className="flex">
+                  <span className="w-48">Họ, chữ đệm, tên của người cha:</span>
+                  <span className="flex-1 border-b border-black pb-1">{registration.fatherName}</span>
+                </div>
+                
+                <div className="flex mt-4">
+                  <span className="w-48">Năm sinh:</span>
+                  <span className="w-32 border-b border-black pb-1">{formatDate(registration.fatherDob)?.split('/')[2] || ""}</span>
+                  <span className="w-16 ml-2">Dân tộc:</span>
+                  <span className="w-24 border-b border-black pb-1">{registration.fatherEthnicity}</span>
+                  <span className="w-16 ml-2">Quốc tịch:</span>
+                  <span className="flex-1 border-b border-black pb-1">{registration.fatherNationality}</span>
+                </div>
+                
+                <div className="flex mt-4">
+                  <span className="w-48">Nơi cư trú:</span>
+                  <span className="flex-1 border-b border-black pb-1">{registration.fatherAddress}</span>
+                </div>
+              </div>
+
+              {/* Applicant information */}
+              <div className="mt-4">
+                <div className="flex">
+                  <span className="w-48">Họ, chữ đệm, tên của người khai sinh:</span>
+                  <span className="flex-1 border-b border-black pb-1">{registration.applicantName}</span>
+                </div>
+                
+                <div className="flex mt-4">
+                  <span className="w-48">Giấy tờ tùy thân:</span>
+                  <span className="flex-1 border-b border-black pb-1">CCCD số: {registration.applicantCccd}</span>
+                </div>
+              </div>
+
+              {/* Registration details */}
+              <div className="mt-4">
+                <div className="flex">
+                  <span className="w-48">Nơi đăng ký khai sinh:</span>
+                  <span className="flex-1 border-b border-black pb-1"></span>
+                </div>
+                
+                <div className="flex mt-4">
+                  <span className="w-48">Ngày, tháng, năm đăng ký:</span>
+                  <span className="flex-1 border-b border-black pb-1">{formatDate(registration.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Signature section */}
+            <div className="absolute bottom-12 left-12 right-12">
+              <div className="flex justify-between items-end">
+                {/* Left side - Người thực hiện */}
+                <div className="text-center">
+                  <div className="font-bold mb-4">NGƯỜI THỰC HIỆN</div>
+                  {qrCodeUrl && (
+                    <img src={qrCodeUrl} alt="QR code for signature" className="w-16 h-16 mx-auto" />
+                  )}
+                </div>
+
+                {/* Right side - Người ký giấy khai sinh */}
+                <div className="text-center">
+                  <div className="font-bold mb-4">NGƯỜI KÝ GIẤY KHAI SINH</div>
+                  {qrIssuerUrl && (
+                    <img src={qrIssuerUrl} alt="QR code for issuer signature" className="w-16 h-16 mx-auto" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Regular UI Content */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:px-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -447,20 +646,32 @@ const BirthRegistrationDetail = () => {
             </dl>
           </div>
         </div>
-        {signature && qrCodeUrl && (
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Người thực hiện */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg flex flex-col items-center py-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
-              Chữ ký số
+              Người thực hiện
             </h3>
-            <img src={qrCodeUrl} alt="QR code for signature" className="mb-2" ref={qrCanvasRef} />
-            <div className="text-xs break-all text-gray-500 max-w-xs text-center">
-              {typeof signature === "string" ? signature : signature?.signature}
-            </div>
+            {signature && qrCodeUrl && (            
+              <img src={qrCodeUrl} alt="QR code for signature" className="mb-2" />
+            )}
           </div>
-        )}
+          {/* Người ký giấy khai sinh (issuer) */}
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg flex flex-col items-center py-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+              Người ký giấy khai sinh
+            </h3>
+              {issuerSignature && qrIssuerUrl && (            
+              <img src={qrIssuerUrl} alt="QR code for signature" className="mb-2" />
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );
 };
 
 export default BirthRegistrationDetail;
+
