@@ -508,7 +508,7 @@ class MLDSAWrapper {
 
   /**
    * Verifies a signature using a certificate.
-   * @param {Uint8Array} certData - The certificate data as a byte array
+   * @param {Uint8Array | string} certData - The certificate data as a byte array
    * @param {Uint8Array} signatureData - The signature to verify
    * @param {string|Uint8Array} message - The original message
    * @returns {Promise<boolean>} True if the signature is valid, false otherwise
@@ -521,7 +521,10 @@ class MLDSAWrapper {
     const messageBytes = typeof message === 'string' 
       ? new TextEncoder().encode(message) 
       : message;
-    const certPtr = this.malloc(certData.length + 1);
+    const certBytes = typeof certData === 'string'
+      ? new TextEncoder().encode(certData)
+      : certData;
+    const certPtr = this.malloc(certBytes.length + 1);
     const signaturePtr = this.malloc(signatureData.length + 1);
     if (!certPtr || !signaturePtr) {
       if (certPtr) this.free(certPtr);
@@ -537,7 +540,7 @@ class MLDSAWrapper {
     try {
       // Copy message to WASM memory
       this._copyToWasmMemory(messagePtr, messageBytes);
-      this._copyToWasmMemory(certPtr, certData);
+      this._copyToWasmMemory(certPtr, certBytes);
       this._copyToWasmMemory(signaturePtr, signatureData);
       
       // Verify the signature
@@ -691,21 +694,23 @@ class MLDSAWrapper {
    * Helper to convert PEM string to DER Uint8Array.
    * @private
    */
-  _pemToDer(pem, label) {
-    const pemHeader = `-----BEGIN ${label}-----`;
-    const pemFooter = `-----END ${label}-----`;
-    const pemStr = typeof pem === 'string' ? pem : new TextDecoder().decode(pem);
-    const base64 = pemStr
-      .replace(pemHeader, '')
-      .replace(pemFooter, '')
-      .replace(/[\r\n]/g, '')
-      .trim();
-    const binary = atob(base64);
-    const der = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      der[i] = binary.charCodeAt(i);
-    }
-    return der;
+  _pemToDer(pem) {
+  // Remove the PEM headers and footers
+  const base64Key = pem
+    .replace(/-----BEGIN [^-]+-----/, "") // Remove the BEGIN header
+    .replace(/-----END [^-]+-----/, "")   // Remove the END footer
+    .replace(/\n/g, "");                  // Remove newlines
+
+  // Decode the Base64 content
+  const binaryString = atob(base64Key);
+
+  // Convert the binary string to a Uint8Array
+  const derData = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    derData[i] = binaryString.charCodeAt(i);
+  }
+
+  return derData;
   }
 }
 

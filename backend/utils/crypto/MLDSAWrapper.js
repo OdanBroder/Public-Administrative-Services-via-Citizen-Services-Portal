@@ -538,6 +538,7 @@ class MLDSAWrapper {
     if (typeof signatureData === 'string') {
       signatureData = new TextEncoder().encode(signatureData);
     }
+    
     // Convert message to Uint8Array if it's a string
     const messageBytes = typeof message === 'string' 
       ? new TextEncoder().encode(message) 
@@ -554,7 +555,7 @@ class MLDSAWrapper {
     if (!messagePtr) {
       throw new Error("Failed to allocate memory for message");
     }
-    
+    // console.log("Certificate Data:", new TextDecoder().decode(certData));
     try {
       // Copy message to WASM memory
       this._copyToWasmMemory(messagePtr, messageBytes);

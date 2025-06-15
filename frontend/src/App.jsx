@@ -15,6 +15,7 @@ import Register from './components/Register';
 import Account from './components/Account';
 import Profile from './components/Profile';
 import MyRegistration from './components/BirthRegistrationProf';
+import BirthRegistrationDetail from './components/BirthRegistrationDetail';
 // For services
 import MedicalCoverage from './components/MedicalCoverage';
 import BirthRegistrationForm from './components/BirthRegistrationForm';
@@ -145,6 +146,11 @@ const AppContent = () => {
           <Route path="/generate-keys" element={
             <KeyGenerator />
           } />
+          <Route path="/birth-registration/:id" element={
+            <ProtectedRoute>
+              <BirthRegistrationDetail/>
+            </ProtectedRoute>
+          }></Route>
 
           {/* For warning Page */}
           <Route path="/unauthorized" element={<Unauthorized />} />
@@ -152,7 +158,6 @@ const AppContent = () => {
 
           {/* Catch-all route */}
           <Route path="*" element={<NotFound/>} />
-
         </Routes>
       </div>
     </div>

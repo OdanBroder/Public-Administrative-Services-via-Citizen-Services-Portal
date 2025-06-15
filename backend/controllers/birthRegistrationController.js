@@ -44,7 +44,8 @@ export const createBirthRegistration = async (req, res) => {
       motherEthnicity,
       motherNationality,
       motherResidenceType,
-      motherAddress
+      motherAddress,
+      message
     } = req.body;
 
     // Validation
@@ -149,7 +150,7 @@ export const createBirthRegistration = async (req, res) => {
       // Create a message to sign
       const clone = birthApplicationData;
       delete clone.status;
-      const message = JSON.stringify(clone);
+      // const message = JSON.stringify(clone);
       // Verify the signature using the user's certificate
       const userPath = await FilePath.findOne({
         where: { user_id: applicantId },
@@ -168,8 +169,8 @@ export const createBirthRegistration = async (req, res) => {
 
       // Verify the signature
       // console.log("Message:", message);
-      // console.log("Certificate:", certData);
-      console.log("Signature Data:", sigData.toString('base64'));
+      // // console.log("Certificate:", certData);
+      // console.log("Signature Data:", sigData.toString('base64'));
       const is_verified = await Mldsa_wrapper.verifyWithCertificate(
         certData,
         sigData,
@@ -184,12 +185,22 @@ export const createBirthRegistration = async (req, res) => {
       }
       const applicationPath = FilePath.findOne({
         where: { user_id: applicantId }});      // Save the file path and signature to the birth registration
-      const sigPath = path.join(applicationPath.file_path, 'sig', 'signature.bin');
-      const messagePath = path.join(applicationPath.file_path, 'message', 'message.txt');
-      await fs.promises.writeFile(sigPath, signature); // Save the signature file in base64
-      await fs.promises.writeFile(messagePath, message);
+      applicationPath.application = path.join(process.cwd(), '/working', 'user', applicantId.toString(), 'application', birthApplication_new.id.toString());
+      await fs.promises.mkdir(applicationPath.application, { recursive: true });
+      await fs.promises.mkdir(path.join(applicationPath.application, 'sig'), { recursive: true });
+      // await fs.promises.mkdir(path.join(applicationPath.application, 'message'), { recursive: true });
+      if (!applicationPath || !applicationPath.application) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy đường dẫn tệp cho người nộp đơn"
+        });
+      }
+      const sigPath = path.join(applicationPath.application, 'sig', 'signature.txt');
+      // const messagePath = path.join(applicationPath.application, 'message', 'message.txt');
+      const sigToSave = JSON.stringify({message:message, signature: signature});
+      await fs.promises.writeFile(sigPath, sigToSave); // Save the signature file in base64
       await birthApplication_new.update({
-        file_path: applicationPath.file_path,
+        file_path: applicationPath.application,
         status: 'pending',
       });
     }
@@ -206,6 +217,19 @@ export const createBirthRegistration = async (req, res) => {
       message: "Lỗi máy chủ",
       error: error.message
     });
+    if (req.files && req.files.signature) {
+      req.files.signature.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error("Error deleting file:", err);
+        });
+      });
+    }
+    // Delete entry in database if necessary
+    if (req.body && req.body.applicantId) {
+      await BirthRegistration.destroy({
+        where: { applicantId: req.body.applicantId }
+      });
+    }
   }
 };
 
@@ -439,6 +463,45 @@ export const changeBirthRegistrationStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error changing birth registration status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+}
+
+export const getBirthRegistrationSubmitterSignature = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const birthRegistration = await BirthRegistration.findByPk(id, {
+      attributes: ['file_path']
+    });
+
+    if (!birthRegistration || !birthRegistration.file_path) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đăng ký khai sinh hoặc đường dẫn tệp không hợp lệ"
+      });
+    }
+
+    const sigPath = path.join(birthRegistration.file_path, 'sig', 'signature.bin');
+    
+    if (!fs.existsSync(sigPath)) {
+      return res.status(404).json({
+        success: false,
+        message: "Chữ ký không được tìm thấy"
+      });
+    }
+
+    const signature = await fs.promises.readFile(sigPath, 'utf8');
+
+    res.status(200).json({
+      success: true,
+      data: signature
+    });
+  } catch (error) {
+    console.error("Error fetching birth registration signature:", error);
     res.status(500).json({
       success: false,
       message: "Lỗi máy chủ",

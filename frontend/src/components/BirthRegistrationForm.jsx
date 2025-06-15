@@ -159,7 +159,7 @@ const BirthRegistrationForm = () => {
     setIsLoading(true);
     setSubmitStatus({ type: "", message: "" });
     try {
-      const signature = await signApplication();
+      const {signature, message }= await signApplication();
       const formDataToSend = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
         formDataToSend.append(key, value);
@@ -169,7 +169,7 @@ const BirthRegistrationForm = () => {
       const signatureBase64 = btoa(String.fromCharCode(...signature));
       const signatureBlob = new Blob([signatureBase64], { type: "text/plain" });
       formDataToSend.append("signature", signatureBlob, "signature.txt");
-
+      formDataToSend.append("message", message)
       const response = await api.post("/birth-registration", formDataToSend,{
           headers: { 'Content-Type': undefined }}
       );
@@ -264,21 +264,52 @@ const BirthRegistrationForm = () => {
     return true;
   }
 
-  const  signApplication = async() => {
-    const privateKeyContent = previewUrls.privateKey;
-    const message = JSON.stringify(formData);
-    console.log(message);
-    const signature = new Uint8Array(await Mldsa_wrapper.sign(privateKeyContent, message));
-    if(!signature){
-      setSubmitStatus({
-        type: "error",
-        message: "Không thể ký đơn đăng ký này"
-      })
-      throw new Error("Không thể ký đơn đăng ký này");
+const signApplication = async () => {
+  const privateKeyContent = previewUrls.privateKey;
+  const message = JSON.stringify(formData);
+
+  // 1. Fetch user certificate
+  let certContent = null;
+  try {
+    const certResponse = await api.get('/citizen/my-certificate');
+    if (certResponse.data.success) {
+      if (certResponse.data.certificate && certResponse.data.certificate.data) {
+        const uint8Array = new Uint8Array(certResponse.data.certificate.data);
+        certContent = new TextDecoder('utf-8').decode(uint8Array);
+      } else {
+        certContent = certResponse.data.data?.content || certResponse.data.certificate;
+      }
     }
-    return signature;
+  } catch (err) {
+    setSubmitStatus({
+      type: "error",
+      message: "Không thể lấy chứng chỉ người dùng để xác minh chữ ký."
+    });
+    throw new Error("Không thể lấy chứng chỉ người dùng.");
   }
 
+  const signature = new Uint8Array(await Mldsa_wrapper.sign(privateKeyContent, message));
+  if (!signature) {
+    setSubmitStatus({
+      type: "error",
+      message: "Không thể ký đơn đăng ký này"
+    });
+    throw new Error("Không thể ký đơn đăng ký này");
+  }
+
+  // Double check the signature with the certificate
+  const isValid = await Mldsa_wrapper.verifyWithCertificate(certContent, signature, message);
+  // console.log("Cert content:", certContent);
+  if (!isValid) {
+    setSubmitStatus({
+      type: "error",
+      message: "Chữ ký không hợp lệ với chứng chỉ của bạn."
+    });
+    throw new Error("Chữ ký không hợp lệ với chứng chỉ của bạn.");
+  }
+
+  return {signature, message};
+};
   return (
     <div className="flex items-center justify-center w-h-full">
       <div className="min-h-screen w-[82%] bg-gray-50 py-8">

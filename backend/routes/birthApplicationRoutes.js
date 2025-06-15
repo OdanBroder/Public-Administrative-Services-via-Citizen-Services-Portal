@@ -7,7 +7,8 @@ import {
   getAllBirthRegistrations,
   getBirthRegistrationById,
   getBirthRegistrationByApplicantId,
-  changeBirthRegistrationStatus
+  changeBirthRegistrationStatus,
+  getBirthRegistrationSubmitterSignature
 } from '../controllers/birthRegistrationController.js';
 import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
 
@@ -67,5 +68,10 @@ router.patch("/status/:id",
   }), 
   changeBirthRegistrationStatus
 );
+
+router.get("/:id/signature",
+  authenticate,
+  getBirthRegistrationSubmitterSignature
+)
 
 export default router;
