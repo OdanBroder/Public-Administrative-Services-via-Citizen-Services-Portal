@@ -1,11 +1,167 @@
 import BirthRegistration from '../models/BirthRegistration.js';
-import { Op } from 'sequelize';
 import User from '../models/User.js';
 import FilePath from '../models/FilePath.js';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 import tpmController from '../utils/crypto/tpmController.js';
+
+// Get a specific signature birth registration application
+export const getSignatureById = async (req, res) => {
+  try {
+    const { birthRegistrationId } = req.params;
+
+    const application = await BirthRegistration.findByPk(birthRegistrationId);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn đăng ký khai sinh"
+      });
+    }
+
+    // Get signature from the file path
+    const filePath = application.file_path;
+    if (!filePath) {
+      return res.status(400).json({
+        success: false,
+        message: "Đơn đăng ký khai sinh không có đường dẫn đến chứng chỉ"
+      });
+    }
+    const signaturePath = path.join(filePath, 'sig', 'signature.txt');
+    const signatureExists = await fs.promises.access(signaturePath)
+      .then(() => true)
+      .catch(() => false);
+    if (!signatureExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Đơn đăng ký khai sinh chưa được ký"
+      });
+    }
+    // Read the signature file
+    const signature = await fs.promises.readFile(signaturePath, 'utf8');
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy thông tin signature của đơn đăng ký khai sinh thành công",
+      data: signature
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin đơn đăng ký khai sinh:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+};
+
+// Self signed certificate request
+export const submitCertificateRequest = async (req, res) => {
+  if (!req.files || !req.files.bcaCsr || !req.files.bcaCert) {
+    return res.status(400).json({
+      success: false,
+      message: "Vui lòng cung cấp cả CSR và Certificate"
+    });
+  }
+
+  try {
+    const bcaId = req.user.userId;
+    const bcaFilePath = await FilePath.findOne({
+      where: { user_id: bcaId }
+    });
+    if (bcaFilePath && bcaFilePath.certificate) {
+      return res.status(400).json({
+        success: false,
+        message: "BCA đã có chứng chỉ, không thể gửi yêu cầu"
+      });
+    }
+
+    let bcaCsr = null;
+    let bcaCert = null;
+    // Check if CSR file is provided
+    if (req.files.bcaCsr && req.files.bcaCsr[0]) {
+
+      const csrFile = req.files.bcaCsr[0];
+      // Convert buffer to UTF-8 string
+      bcaCsr = csrFile.buffer.toString('utf8');
+
+      // Validate CSR format
+      if (!bcaCsr.includes('-----BEGIN CERTIFICATE REQUEST-----') ||
+        !bcaCsr.includes('-----END CERTIFICATE REQUEST-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "CSR format không hợp lệ. Vui lòng cung cấp file CSR đúng định dạng PEM."
+        });
+      }
+    }
+
+    if (!bcaCsr) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp CSR (Certificate Signing Request)"
+      });
+    }
+
+    // Check if Certificate file is provided
+    if (req.files.bcaCert && req.files.bcaCert[0]) {
+
+      const certificateFile = req.files.bcaCert[0];
+      // Convert buffer to UTF-8 string
+      bcaCert = certificateFile.buffer.toString('utf8');
+
+      // Validate certificate format
+      if (!bcaCert.includes('-----BEGIN CERTIFICATE-----') ||
+        !bcaCert.includes('-----END CERTIFICATE-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "Certificate format không hợp lệ. Vui lòng cung cấp file certificate đúng định dạng PEM."
+        });
+      }
+    }
+
+    if (!bcaCert) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp Certificate (Certificate Signing Request)"
+      });
+    }
+
+    const certDir = path.join(process.cwd(), '/working', 'bca', bcaId.toString(), 'cert');
+
+    // Create directory if it doesn't exist
+    console.log(`Creating directory for BCA certificate: ${certDir}`);
+    await fs.promises.mkdir(certDir, { recursive: true });
+
+    // Define paths for bca's CSR and certificate
+    const csrPath = path.join(certDir, 'bca_csr.pem');
+    const certificatePath = path.join(certDir, 'bca_certificate.pem');
+
+    // Write CSR and certificate to files
+    await fs.promises.writeFile(csrPath, bcaCsr);
+    await fs.promises.writeFile(certificatePath, bcaCert);
+    console.log("CSR and certificate files created successfully");
+    // Update bca's file paths in the database
+    await FilePath.upsert({
+      user_id: bcaId,
+      csr: csrPath,
+      certificate: certificatePath
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Yêu cầu chứng chỉ đã được gửi thành công",
+    });
+
+  } catch (error) {
+    console.error("Lỗi khi gửi yêu cầu chứng chỉ:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+}
 
 // Get all birth registration applications awaiting signature
 export const getPendingApplications = async (req, res) => {
@@ -70,51 +226,6 @@ export const getApplicationById = async (req, res) => {
   }
 };
 
-// Verify a birth registration application
-export const verifyApplication = async (req, res) => {
-  try {
-    const { birthRegistrationId } = req.params;
-    const bcaId = req.user.userId;
-
-    const application = await BirthRegistration.findByPk(birthRegistrationId);
-    if (!application) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy đơn đăng ký khai sinh"
-      });
-    }
-
-    if (application.status !== 'awaiting_signature') {
-      return res.status(400).json({
-        success: false,
-        message: "Đơn đăng ký không ở trạng thái chờ ký"
-      });
-    }
-
-    // Update application status to verified
-    await application.update({
-      status: 'verified',
-      processed_by: bcaId,
-      processed_at: new Date()
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Xác minh đơn đăng ký khai sinh thành công",
-      data: {
-        applicationId: application.id
-      }
-    });
-  } catch (error) {
-    console.error("Lỗi khi xác minh đơn đăng ký khai sinh:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Lỗi máy chủ",
-      error: error.message
-    });
-  }
-}
-
 // Approve a birth registration application
 export const approveApplication = async (req, res) => {
   try {
@@ -136,68 +247,62 @@ export const approveApplication = async (req, res) => {
         message: "Đơn đăng ký không ở trạng thái chờ ký"
       });
     }
+    console.log(req.files);
+    let bcaSignMessage = null;
+    // Read BCA sign message
+    if (req.files && req.files.bcaSignMessage && req.files.bcaSignMessage[0]) {
+      const bcaSignMessageFile = req.files.bcaSignMessage[0];
+      // Convert buffer to UTF-8 string
+      bcaSignMessage = bcaSignMessageFile.buffer.toString('utf8');
 
-    // Get BCA's private key and certificate
-    const bcaFilePath = await FilePath.findOne({
-      where: { user_id: bcaId }
-    });
-
-    if (!bcaFilePath) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy thông tin chứng chỉ của Bộ Công An"
-      });
+      // Validate BCA sign message format
+      if (!bcaSignMessage.includes('-----BEGIN SIGNATURE-----') ||
+        !bcaSignMessage.includes('-----END SIGNATURE-----')) {
+        return res.status(400).json({
+          success: false,
+          message: "BCA sign message format không hợp lệ. Vui lòng cung cấp file BCA sign message đúng định dạng PEM."
+        });
+      }
     }
-
-    // Construct application file path
-    const applicationPath =  application.file_path 
-    // Verify all required files exist
-    const requiredFiles = [
-      bcaFilePath.private_key,
-      bcaFilePath.certificate,
-      applicationPath
-    ];
-
-    const filesExist = await Promise.all(
-      requiredFiles.map(file => fs.access(file).then(() => true).catch(() => false))
-    );
-
-    if (filesExist.some(exists => !exists)) {
+    if (!bcaSignMessage) {
       return res.status(400).json({
         success: false,
-        message: "Một hoặc nhiều file cần thiết không tồn tại"
+        message: "BCA sign message không hợp lệ, không thể phê duyệt đơn đăng ký"
       });
     }
 
-    // Read BCA's private key and certificate
-    const bcaPrivateKey = await tpmController.decryptWithRootKey(
-      await fs.readFile(bcaFilePath.private_key, 'utf8')
+    const filePath = await FilePath.findOne({
+      where: { user_id: bcaId }
+    });
+    if (!filePath || !filePath.certificate) {
+      return res.status(400).json({
+        success: false,
+        message: "BCA chưa có chứng chỉ, không thể phê duyệt đơn đăng ký"
+      });
+    }
+
+    const certificatePath = filePath.certificate;
+    // read the certificate file
+    const certificateContent = await fs.promises.readFile(certificatePath, 'utf8');
+    console.log(bcaSignMessage);
+    const is_verified = await Mldsa_wrapper.verifyCertificateIssuedByCA(
+      bcaSignMessage,
+      certificateContent
     );
+
+    if (!is_verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Chữ ký BCA không hợp lệ, không thể phê duyệt đơn đăng ký"
+      });
+    }
 
     // Create signature directory if it doesn't exist
     const signatureDir = path.join(applicationPath, 'sig');
     await fs.mkdir(signatureDir, { recursive: true });
 
-    const sigFile = path.join(applicationPath, 'sig', 'signature.bin');   // signature that backend sign in application
-    const sigData = await fs.readFile(sigFile, 'utf8');
-    const message = {
-      signature: sigData,
-      time: Date.now()
-    };
-    const messagePath = path.join(applicationPath, "message", "issuer_message.txt");
-    // Sign the application
     const signaturePath = path.join(signatureDir, 'issuer_signature.sig');
-    const signed = await Mldsa_wrapper.sign(
-      bcaPrivateKey,
-      JSON.stringify(message),
-      signaturePath
-    );message
-    await fs.writeFile(messagePath, JSON.stringify(message));
-    
-
-    if (!signed ) {
-      throw new Error('Không thể ký đơn đăng ký');
-    }
+    await fs.writeFile(signaturePath, bcaSignMessage);
 
     // Update application status
     await application.update({

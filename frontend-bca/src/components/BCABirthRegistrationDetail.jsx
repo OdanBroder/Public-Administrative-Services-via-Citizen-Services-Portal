@@ -1,14 +1,55 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Key, CheckCircle } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { useToast } from '../components/ui/Toast';
+import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper';
+
+const formatKeyToPEM = (keyData, keyType) => {
+  const base64Key = btoa(String.fromCharCode(...keyData));
+  const formattedKey = `-----BEGIN ${keyType}-----\n${base64Key.match(/.{1,64}/g).join('\n')}\n-----END ${keyType}-----`;
+  return formattedKey;
+};
+
+const convertPEMToDER = (pemKey) => {
+  // Remove the PEM headers and footers
+  const base64Key = pemKey
+    .replace(/-----BEGIN [^-]+-----/, "") // Remove the BEGIN header
+    .replace(/-----END [^-]+-----/, "")   // Remove the END footer
+    .replace(/\n/g, "");                  // Remove newlines
+
+  // Decode the Base64 content
+  const binaryString = atob(base64Key);
+
+  // Convert the binary string to a Uint8Array
+  const derData = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    derData[i] = binaryString.charCodeAt(i);
+  }
+
+  return derData;
+};
+
+const readFileAsText = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsText(file);
+  });
+};
 
 const BirthRegistrationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [message, setMessage] = useState(null);
+  const [privateKeyFile, setPrivateKeyFile] = useState(null);
   const [registration, setRegistration] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { api, role } = useAuth();
+  const { showToast } = useToast();
 
   if (!role || role !== "BCA") {
     navigate("/unauthorized");
@@ -16,7 +57,29 @@ const BirthRegistrationDetail = () => {
 
   useEffect(() => {
     fetchRegistrationDetails();
+    fetchSignature();
   }, [id]);
+
+  const fetchSignature = async () => {
+    try {
+      const response = await api.get(`/bca/birthRegistrations/${id}/signature`);
+      const responseData = response.data;
+      if (!responseData.success) {
+        console.error(responseData.message || "Failed to fetch signature");
+      }
+
+      const data = responseData.data;
+      const parsedData = JSON.parse(data);
+      const msg = {
+        ...JSON.parse(parsedData.message),
+        time: Date.now()
+      }; 
+      setMessage(JSON.stringify(msg));
+    } catch (error) {
+      console.error("Error reading signature file:", error);
+      setError("Không thể đọc tệp chữ ký. Vui lòng thử lại.");
+    }
+  };
 
   const fetchRegistrationDetails = async () => {
     setLoading(true);
@@ -43,41 +106,38 @@ const BirthRegistrationDetail = () => {
     }
   };
 
-  async function handleAccept() {
-    try {
-      try {
-        const response = await api.post(`/birth-registration/verify/${id}`);
-        const is_verfied = response.data.success;
-        if (!is_verfied) {
-          setError("Thủ tục xác thực không thành công");
-          return;
-        }
-        if (response.data.success) {
-          setError("Thủ tục đã được duyệt và đưa vào hàng chờ ký.");
-          navigate("/bca/birth-registrations");
-
-        } else {
-          setError(response.data.message || "Không thể duyệt thủ tục.");
-        }
-      }
-      catch (err) {
-        if (err.response) {
-          setError(err.response?.data?.message || "Lỗi xác thực thủ tục");
-          return;
-        }
-      }
-
-
-
-    } catch (error) {
-      console.error("Error accepting registration:", error);
-      setError("Đã xảy ra lỗi khi duyệt thủ tục. Vui lòng thử lại sau.");
-    }
-  }
-
   const handleApprove = async () => {
     try {
-      const response = await api.post(`/bca/birthRegistrations/${id}/approve`);
+      const formData = new FormData();
+
+      const privateKeyContent = await readFileAsText(privateKeyFile);
+      if (!privateKeyContent) {
+        showToast('Please select a valid private key file', 'error');
+        return;
+      }
+
+      if(!message) {
+        showToast('No message to sign. Please fetch the registration details first.', 'error');
+        return;
+      }
+
+      const privateKeyDER = convertPEMToDER(privateKeyContent);
+
+      const signedMessage = await Mldsa_wrapper.sign(privateKeyDER, message);
+      if (!signedMessage) {
+        showToast('Failed to sign the message. Please check your private key.', 'error');
+        return;
+      }
+      const signCert = formatKeyToPEM(signedMessage, 'SIGNATURE');
+      showToast('Message signed successfully', 'success');
+      console.log('Signed message:', signCert);
+      formData.append('bcaSignMessage', new Blob([signCert], { type: 'application/x-x509-ca-cert' }));
+
+      const response = await api.post(`/bca/birthRegistrations/${id}/approve`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       if (response.data.success) {
         navigate('/bca/birth-registrations');
       } else {
@@ -116,6 +176,41 @@ const BirthRegistrationDetail = () => {
 
   const handleBack = () => {
     navigate("/bca/birth-registrations");
+  };
+
+  const handleFileChange = (e) => {
+    setPrivateKeyFile(e.target.files[0]);
+  };
+
+  const handleLoadPrivateKey = async () => {
+    if (!privateKeyFile) {
+      showToast('Please select a private key file', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Read file contents as text
+      const privateKeyContent = await readFileAsText(privateKeyFile);
+
+      // Convert PEM to DER
+      const privateKeyDER = convertPEMToDER(privateKeyContent);
+
+      // Store the processed key data (you can add your logic here)
+      console.log('Private key loaded:', {
+        file: privateKeyFile,
+        content: privateKeyContent,
+        der: privateKeyDER
+      });
+
+      showToast('Private key loaded successfully', 'success');
+    } catch (error) {
+      console.error('Error loading private key:', error);
+      showToast(`Failed to load private key: ${error.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -224,10 +319,10 @@ const BirthRegistrationDetail = () => {
             </div>
             <span
               className={`px-3 py-1 rounded-full text-md font-medium ${registration.status === "approved"
-                  ? "bg-green-100 text-green-800"
-                  : registration.status === "rejected"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-yellow-100 text-yellow-800"
+                ? "bg-green-100 text-green-800"
+                : registration.status === "rejected"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-yellow-100 text-yellow-800"
                 }`}
             >
               {registration.status === "approved"
@@ -476,13 +571,6 @@ const BirthRegistrationDetail = () => {
           <div className="bg-white shadow overflow-hidden sm:rounded-lg flex justify-center p-6 space-x-4">
             <button
               type="button"
-              className="text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
-              onClick={handleAccept}
-            >
-              Duyệt thủ tục và đưa vào hàng chờ ký
-            </button>
-            <button
-              type="button"
               className="text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-md px-6 py-3 transition duration-200 ease-in-out"
               onClick={handleReject}
             >
@@ -500,6 +588,59 @@ const BirthRegistrationDetail = () => {
 
         )}
         {/* Add hộ t button ký nếu application đã được duyệt */}
+        <div className="space-y-4">
+          {/* Private Key Upload */}
+          <div>
+            <label className="block text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
+              <Key className="w-4 h-4" />
+              Private Key (.key, .pem)
+            </label>
+            <input
+              type="file"
+              accept=".key,.pem"
+              onChange={handleFileChange}
+              disabled={loading}
+              className="block w-full text-sm text-gray-600
+                        file:mr-4 file:py-3 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-medium
+                        file:bg-blue-50 file:text-blue-700
+                        hover:file:bg-blue-100
+                        cursor-pointer border border-gray-300 rounded-md
+                        bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                        disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            {privateKeyFile && (
+              <div className="mt-2 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <p className="text-sm text-green-600 font-medium">
+                  Selected: {privateKeyFile.name}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Load Button */}
+          <Button
+            variant="default"
+            size="default"
+            onClick={handleLoadPrivateKey}
+            disabled={!privateKeyFile || loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <Key className="w-4 h-4 mr-2" />
+                Load Private Key
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -76,6 +76,7 @@ INSERT INTO RolePermissions (role_id, permission_id) VALUES
 -- BCA permissions
 INSERT INTO RolePermissions (role_id, permission_id) VALUES
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'view_bca_applications')),
+((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'sign_certificate')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'submit_certificate')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'process_bca_applications')),
 ((SELECT id FROM Roles WHERE name = 'BCA'), (SELECT id FROM Permissions WHERE name = 'manage_applications')),

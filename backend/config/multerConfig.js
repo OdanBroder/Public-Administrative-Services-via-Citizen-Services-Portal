@@ -4,11 +4,11 @@ import { encrypt } from './cryptoUtils.js';
 
 // Set storage engine to memoryStorage to get file buffer
 const upload = multer({
-  storage: multer.memoryStorage(), 
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10000000 }, // Limit file size (e.g., 10MB)
   fileFilter: function (req, file, cb) {
     if (!req.user || !req.user.userId) {
-        return cb(new Error("User not authenticated or user ID missing."));
+      return cb(new Error("User not authenticated or user ID missing."));
     }
     checkFileType(file, cb);
   },
@@ -18,8 +18,11 @@ const upload = multer({
   { name: 'csr', maxCount: 1 }, // Add CSR field
   { name: 'certificate', maxCount: 1 }, // Add certificate field for self-signed certificates
   { name: 'caCert', maxCount: 1 }, // Add CA certificate field
-  { name: 'userCert', maxCount: 1 }, // Add user certificate field
   { name: 'caCsr', maxCount: 1 }, // Add CA CSR field
+  { name: 'bcaCsr', maxCount: 1 }, // Add BCA CSR field
+  { name: 'bcaCert', maxCount: 1 }, // Add BCA certificate field
+  { name: 'bcaSignMessage', maxCount: 1 }, // Add BCA sign message field
+  { name: 'userCert', maxCount: 1 }, // Add user certificate field
   { name: 'signature', maxCount: 1 } // Add signature field for signed certificates
 ]);
 
@@ -30,7 +33,7 @@ const encryptFileMiddleware = (req, res, next) => {
     for (const fieldName in req.files) {
       req.files[fieldName].forEach(file => {
         // Only encrypt image files, not certificate-related files
-        if (!['csr', 'certificate', 'caCert', 'userCert', 'caCsr'].includes(fieldName)) {
+        if (!['csr', 'certificate', 'caCert', 'userCert', 'caCsr', 'bcaCsr', 'bcaCert', 'bcaSignMessage'].includes(fieldName)) {
           const encrypted = encrypt(file.buffer);
           file.buffer = encrypted;
         }
@@ -52,29 +55,29 @@ function generateFilename(req, file) {
 // Check file type - updated to handle CSR files
 function checkFileType(file, cb) {
   // Allow CSR files
-  if (file.fieldname === 'csr' || file.fieldname === 'caCsr') {
+  if (file.fieldname === 'csr' || file.fieldname === 'caCsr' || file.fieldname === 'bcaCsr') {
     const csrTypes = /csr|pem|txt/;
     const extname = csrTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = file.mimetype === 'text/plain' || 
-                     file.mimetype === 'application/x-pem-file' || 
-                     file.mimetype === 'application/octet-stream';
-    
+    const mimetype = file.mimetype === 'text/plain' ||
+      file.mimetype === 'application/x-pem-file' ||
+      file.mimetype === 'application/octet-stream';
+
     if (mimetype || extname || file.originalname.endsWith('.csr')) {
       return cb(null, true);
     } else {
       cb("Error: Invalid CSR file type!");
     }
-  } 
+  }
   // Allow certificate files
-  else if (['certificate', 'caCert', 'userCert'].includes(file.fieldname)) {
+  else if (['certificate', 'caCert', 'userCert', 'bcaCert', 'bcaSignMessage'].includes(file.fieldname)) {
     // Accept common certificate mime types and extensions
     const certTypes = /pem|crt|cer|der/;
     const extname = certTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = file.mimetype === 'application/x-x509-ca-cert' ||
-                     file.mimetype === 'application/pkix-cert' ||
-                     file.mimetype === 'application/x-pem-file' ||
-                     file.mimetype === 'application/octet-stream' ||
-                     file.mimetype === 'text/plain';
+      file.mimetype === 'application/pkix-cert' ||
+      file.mimetype === 'application/x-pem-file' ||
+      file.mimetype === 'application/octet-stream' ||
+      file.mimetype === 'text/plain';
     if (mimetype || extname) {
       return cb(null, true);
     } else {
@@ -84,10 +87,10 @@ function checkFileType(file, cb) {
   else if (file.fieldname === 'signature') {
     const signatureTypes = /pem|txt/;
     const extname = signatureTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = file.mimetype === 'text/plain' || 
-                     file.mimetype === 'application/x-pem-file' || 
-                     file.mimetype === 'application/octet-stream';
-    if (mimetype || extname ) {
+    const mimetype = file.mimetype === 'text/plain' ||
+      file.mimetype === 'application/x-pem-file' ||
+      file.mimetype === 'application/octet-stream';
+    if (mimetype || extname) {
       return cb(null, true);
     }
     else {

@@ -22,6 +22,7 @@ import BCAPendingApplications from './components/BCABirthRegistrations';
 
 // For verification
 import KeyGenerator from './components/KeyGenerator';
+import SelfSignedCertificate from './components/SelfSignedCertificate';
 
 // For not found and unauthorized pages
 import NotFound from './components/NotFound';
@@ -141,13 +142,19 @@ const AppContent = () => {
             <KeyGenerator />
             // <div>HEHEHE</div>
           } />
-
+          {/* Self-signed certificate */}
+          <Route path="/bca/self-signed-certificate" element={
+            <AuthorizedRoute required_role="BCA">
+              <SelfSignedCertificate />
+            </AuthorizedRoute>
+          } />
+          
           {/* For warning Page */}
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/not-found" element={<NotFound />} />
 
           {/* Catch-all route */}
-          <Route path="*" element={<NotFound/>} />
+          <Route path="*" element={<NotFound />} />
 
         </Routes>
       </div>

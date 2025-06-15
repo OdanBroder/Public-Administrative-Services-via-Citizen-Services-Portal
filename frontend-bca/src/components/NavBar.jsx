@@ -103,6 +103,12 @@ const Navbar = ({ user, role }) => {
                     >
                       Tạo khóa
                     </Link>
+                    <Link
+                      to="/bca/self-signed-certificate"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Tạo chứng chỉ tự ký
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
