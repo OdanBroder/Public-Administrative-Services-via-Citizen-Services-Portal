@@ -184,7 +184,7 @@ export const createBirthRegistration = async (req, res) => {
           message: "Xác minh chữ ký thất bại"
         });
       }
-      const applicationPath = FilePath.findOne({
+      const applicationPath = await FilePath.findOne({
         where: { user_id: applicantId }});      // Save the file path and signature to the birth registration
       applicationPath.application = path.join(process.cwd(), '/working', 'user', applicantId.toString(), 'application', birthApplication_new.id.toString());
       await fs.promises.mkdir(applicationPath.application, { recursive: true });
@@ -210,9 +210,11 @@ export const createBirthRegistration = async (req, res) => {
         type: 'requester',
         path: sigPath
       })
+      await applicationPath.save();
+      // await fs.promises.writeFile(messagePath, message); // Save the message fil
     }
     birthApplication_new.status = "awaiting_signature"; 
-    birthApplication_new.save();
+    await birthApplication_new.save();
 
     res.status(201).json({
       success: true,
@@ -499,6 +501,33 @@ export const getBirthRegistrationSubmitterSignature = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching birth registration signature:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ",
+      error: error.message
+    });
+  }
+}
+
+export const getBirthRegistrationIssuerSignature = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const signature = await Sigs.findOne({
+      where: { birth_registration_id: id, type: 'issuer' }
+    });
+    if (!signature) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy chữ ký của cơ quan chức năng"
+      });
+    }
+    const signatureUrl = `https://localhost:44300/signature/issuer/${signature.UUID}`;
+    res.status(200).json({
+      success: true,
+      data: signatureUrl
+    });
+  } catch (error) {
+    console.error("Error fetching birth registration issuer signature:", error);
     res.status(500).json({
       success: false,
       message: "Lỗi máy chủ",

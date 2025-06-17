@@ -8,5 +8,5 @@ const router = express.Router();
 // router.post('/qr/verify', authenticate, verifyQrSignature);
 
 router.get("/signature/requester/:uuid",fetchSignatureFromUUID);
-
+router.get("/signature/issuer/:uuid",fetchSignatureFromUUID);
 export default router;

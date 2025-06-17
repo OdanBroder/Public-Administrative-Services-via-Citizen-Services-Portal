@@ -4,14 +4,14 @@ import mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 import path from 'path';
 import fs from 'fs';
 import tpmService from '../utils/crypto/tpmController.js';
-
+import { Op } from 'sequelize';
 export const getUnverifiedUsers = async (req, res) => {
   try {
     const unverifiedUsers = await User.findAll({
       where: {
         is_verified: false,
         complete_profile: true,
-        role_id: 2 // Assuming role_id 2 is for citizens
+        role_id: {[Op.or]: [2,6]} // Assuming role_id 2 is for citizens
       },
       attributes: ['id', 'username', 'email', 'first_name', 'last_name'],
     });
@@ -46,7 +46,7 @@ export const getUnverifiedUsersbyId = async (req, res) => {
         is_verified: false,
         complete_profile: true,
         id: userId,
-        role_id: 2 // Assuming role_id 2 is for citizens
+        role_id: {[Op.or]: [2,6]} // Assuming role_id 2 is for citizens
       },
       attributes: ['id', 'username', 'email', 'first_name', 'last_name'],
       include: [{

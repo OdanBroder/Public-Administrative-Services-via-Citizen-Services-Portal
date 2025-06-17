@@ -5,7 +5,27 @@ import path from 'path';
 import fs from 'fs';
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 import tpmController from '../utils/crypto/tpmController.js';
+import Sigs from '../models/Sigs.js';
+import { sign } from 'crypto';
 
+const convertPEMToDER = (pemKey) => {
+  // Remove the PEM headers and footers
+  const base64Key = pemKey
+    .replace(/-----BEGIN [^-]+-----/, "") // Remove the BEGIN header
+    .replace(/-----END [^-]+-----/, "")   // Remove the END footer
+    .replace(/\n/g, "");                  // Remove newlines
+
+  // Decode the Base64 content
+  const binaryString = atob(base64Key);
+
+  // Convert the binary string to a Uint8Array
+  const derData = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    derData[i] = binaryString.charCodeAt(i);
+  }
+
+  return derData;
+};
 // Get a specific signature birth registration application
 export const getSignatureById = async (req, res) => {
   try {
@@ -229,7 +249,9 @@ export const getApplicationById = async (req, res) => {
 // Approve a birth registration application
 export const approveApplication = async (req, res) => {
   try {
-    const { birthRegistrationId } = req.params;
+    const { birthRegistrationId,} = req.params;
+    const{ message }= req.body;
+    const bcaMessage = message; 
     const bcaId = req.user.userId;
 
     const application = await BirthRegistration.findByPk(birthRegistrationId);
@@ -247,11 +269,12 @@ export const approveApplication = async (req, res) => {
         message: "Đơn đăng ký không ở trạng thái chờ ký"
       });
     }
-    console.log(req.files);
+    // console.log(req.files);
     let bcaSignMessage = null;
     // Read BCA sign message
     if (req.files && req.files.bcaSignMessage && req.files.bcaSignMessage[0]) {
       const bcaSignMessageFile = req.files.bcaSignMessage[0];
+      // bcaMessage = req.files.message[0].buffer.toString('utf8');
       // Convert buffer to UTF-8 string
       bcaSignMessage = bcaSignMessageFile.buffer.toString('utf8');
 
@@ -284,26 +307,38 @@ export const approveApplication = async (req, res) => {
     const certificatePath = filePath.certificate;
     // read the certificate file
     const certificateContent = await fs.promises.readFile(certificatePath, 'utf8');
-    console.log(bcaSignMessage);
-    const is_verified = await Mldsa_wrapper.verifyCertificateIssuedByCA(
-      bcaSignMessage,
-      certificateContent
-    );
-
+    // console.log(bcaSignMessage);
+    const signatureContent = convertPEMToDER(bcaSignMessage);
+    const is_verified = await Mldsa_wrapper.verifyWithCertificate(certificateContent, signatureContent, bcaMessage);
+    
     if (!is_verified) {
       return res.status(400).json({
         success: false,
         message: "Chữ ký BCA không hợp lệ, không thể phê duyệt đơn đăng ký"
       });
     }
-
+    console.log(application.applicant_id);
+    const applicationFiles = await FilePath.findOne({
+      where: { user_id: application.applicant_id }
+    });
     // Create signature directory if it doesn't exist
+    const applicationPath = applicationFiles.application;
     const signatureDir = path.join(applicationPath, 'sig');
-    await fs.mkdir(signatureDir, { recursive: true });
+    await fs.promises.mkdir(signatureDir, { recursive: true });
 
     const signaturePath = path.join(signatureDir, 'issuer_signature.sig');
-    await fs.writeFile(signaturePath, bcaSignMessage);
+    const signatureToSave = JSON.stringify({
+      message: bcaMessage,
+      signature: Buffer.from(signatureContent).toString('base64')
+    });
+    await fs.promises.writeFile(signaturePath, signatureToSave, 'utf8');
 
+    await Sigs.create({
+      UUID: crypto.randomUUID(),
+      birth_registration_id: application.id,
+      type: 'issuer',
+      path: signaturePath
+    })
     // Update application status
     await application.update({
       status: 'approved',

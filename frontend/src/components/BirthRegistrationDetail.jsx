@@ -397,7 +397,7 @@ const BirthRegistrationDetail = () => {
                 <div className="text-center">
                   <div className="font-bold mb-4">NGƯỜI THỰC HIỆN</div>
                   {qrCodeUrl && (
-                    <img src={qrCodeUrl} alt="QR code for signature" className="w-16 h-16 mx-auto" />
+                    <img src={qrCodeUrl} alt="QR code for signature" className="w-24 h-24 mx-auto" />
                   )}
                 </div>
 
@@ -405,7 +405,7 @@ const BirthRegistrationDetail = () => {
                 <div className="text-center">
                   <div className="font-bold mb-4">NGƯỜI KÝ GIẤY KHAI SINH</div>
                   {qrIssuerUrl && (
-                    <img src={qrIssuerUrl} alt="QR code for issuer signature" className="w-16 h-16 mx-auto" />
+                    <img src={qrIssuerUrl} alt="QR code for issuer signature" className="w-24 h-24 mx-auto" />
                   )}
                 </div>
               </div>

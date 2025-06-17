@@ -72,6 +72,12 @@ class MLDSAWrapper {
     this._verify_signature_with_cert = this.cwrap('verify_signature_with_cert', 'number', ['number','number','number','number','number','number',]);
     this._sign_certificate = this.cwrap('sign_certificate', 'number', ['number', 'number','number','number','number','number','number','number','number' ]);
     this._verify_certificate_issued_by_ca = this.cwrap('verify_certificate_issued_by_ca', 'number', ['number', 'number', 'number', 'number', ]);
+    // Add wrapper for extract_subject_info_from_cert
+    this._extract_subject_info_from_cert = this.cwrap(
+      'extract_subject_info_from_cert',
+      'number',
+      ['number', 'number', 'number', 'number']
+    );
   }
 
   /**
@@ -407,13 +413,21 @@ class MLDSAWrapper {
 
   /**
    * Signs a message using ML-DSA-65.
-   * @param {Uint8Array} privateKey - The private key as a byte array
+   * @param {Uint8Array | string} privateKey - The private key as a byte array
    * @param {string|Uint8Array} message - The message to sign
    * @returns {Promise<Uint8Array>} The signature as a byte array
    * @throws {Error} If signing fails
    */
   async sign(privateKey, message) {
     this._ensureInitialized();
+      if (typeof privateKey === 'string') {
+      // Convert PEM string to Uint8Array DER
+      privateKey = this._pemToDer(privateKey);
+    } else if (privateKey instanceof Uint8Array && this._isPEM(privateKey)) {
+      // If privateKey is Uint8Array but contains PEM, convert to DER
+      const pemStr = new TextDecoder().decode(privateKey);
+      privateKey = this._pemToDer(pemStr);
+    }
     // Allocate memory for the private key
     const privateKeyPtr = this.malloc(privateKey.length);
     const signaturePtr = this.malloc(1024 * 1024);
@@ -519,31 +533,22 @@ class MLDSAWrapper {
   /**
    * Verifies a signature using a certificate.
    * @param {Uint8Array | string} certData - The certificate data as a byte array
-   * @param {Uint8Array | string} signatureData - The signature to verify
-   * @param {string|Uint8Array } message - The original message
+   * @param {Uint8Array} signatureData - The signature to verify
+   * @param {string|Uint8Array} message - The original message
    * @returns {Promise<boolean>} True if the signature is valid, false otherwise
    * @throws {Error} If verification process fails
    */
   async verifyWithCertificate(certData, signatureData, message) {
     this._ensureInitialized();
-    if (typeof certData === 'string') {
-      certData = new TextEncoder().encode(certData);
-    }
-    // If certData is DER, convert to PEM Uint8Array
-    if (this._isDER(certData)) {
-      certData = this._derToPem(certData, 'CERTIFICATE');
-    }
-
-    // Convert signatureData to Uint8Array if it's a string
-    if (typeof signatureData === 'string') {
-      signatureData = new TextEncoder().encode(signatureData);
-    }
     
     // Convert message to Uint8Array if it's a string
     const messageBytes = typeof message === 'string' 
       ? new TextEncoder().encode(message) 
       : message;
-    const certPtr = this.malloc(certData.length + 1);
+    const certBytes = typeof certData === 'string'
+      ? new TextEncoder().encode(certData)
+      : certData;
+    const certPtr = this.malloc(certBytes.length + 1);
     const signaturePtr = this.malloc(signatureData.length + 1);
     if (!certPtr || !signaturePtr) {
       if (certPtr) this.free(certPtr);
@@ -555,11 +560,11 @@ class MLDSAWrapper {
     if (!messagePtr) {
       throw new Error("Failed to allocate memory for message");
     }
-    // console.log("Certificate Data:", new TextDecoder().decode(certData));
+    
     try {
       // Copy message to WASM memory
       this._copyToWasmMemory(messagePtr, messageBytes);
-      this._copyToWasmMemory(certPtr, certData);
+      this._copyToWasmMemory(certPtr, certBytes);
       this._copyToWasmMemory(signaturePtr, signatureData);
       
       // Verify the signature
@@ -593,7 +598,6 @@ class MLDSAWrapper {
    * @throws {Error} If certificate signing fails
    */
   async signCertificate(caPrivateKey, csrData, caCertData, days = 365) {
-    this._ensureInitialized();
 
     this._ensureInitialized();
     if (typeof csrData === 'string') {
@@ -704,10 +708,90 @@ class MLDSAWrapper {
     const pem = `-----BEGIN ${label}-----\n${base64.match(/.{1,64}/g).join('\n')}\n-----END ${label}-----\n`;
     return new TextEncoder().encode(pem);
   }
+  _isPEM(data) {
+    if (!(data instanceof Uint8Array)) return false;
+    const str = new TextDecoder().decode(data);
+    return str.includes('-----BEGIN');
+  }
+
+  /**
+   * Helper to convert PEM string to DER Uint8Array.
+   * @private
+   */
+  _pemToDer(pem) {
+  // Remove the PEM headers and footers
+  const base64Key = pem
+    .replace(/-----BEGIN [^-]+-----/, "") // Remove the BEGIN header
+    .replace(/-----END [^-]+-----/, "")   // Remove the END footer
+    .replace(/\n/g, "");                  // Remove newlines
+
+  // Decode the Base64 content
+  const binaryString = atob(base64Key);
+
+  // Convert the binary string to a Uint8Array
+  const derData = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    derData[i] = binaryString.charCodeAt(i);
+  }
+
+  return derData;
+  }
+
+  /**
+   * Extracts the subject info from a PEM X.509 certificate buffer.
+   * @param {Uint8Array|string} certData - Certificate buffer (PEM format)
+   * @returns {Promise<object>} Subject info string (e.g. "/CN=.../O=..."), or throws on error
+   */
+  async extractSubjectInfoFromCert(certData) {
+    this._ensureInitialized();
+    // Convert to Uint8Array if string
+    if (typeof certData === 'string') {
+      certData = new TextEncoder().encode(certData);
+    }
+    const certPtr = this.malloc(certData.length);
+    const subjectInfoLen = 1024;
+    const subjectInfoPtr = this.malloc(subjectInfoLen);
+    if (!certPtr || !subjectInfoPtr) {
+      if (certPtr) this.free(certPtr);
+      if (subjectInfoPtr) this.free(subjectInfoPtr);
+      throw new Error("Failed to allocate memory for certificate or subject info");
+    }
+    try {
+      this._copyToWasmMemory(certPtr, certData);
+      const resultLen = this._extract_subject_info_from_cert(
+        certPtr,
+        certData.length,
+        subjectInfoPtr,
+        subjectInfoLen
+      );
+      if (!resultLen) {
+        throw new Error("Failed to extract subject info from certificate");
+      }
+      // Read subject info string from WASM memory
+      let subjectInfo = this._copyFromWasmMemory(subjectInfoPtr, resultLen);
+      let subjectInfoStr = new TextDecoder().decode(subjectInfo).trim();
+      if (subjectInfoStr.startsWith('/')) {
+          subjectInfoStr = subjectInfoStr.slice(1);
+      }
+      const pairs = subjectInfoStr.split('/');
+      const subjectInfoObj = {};
+      pairs.forEach(pair => {
+          const [key, value] = pair.split('=');
+          if (key && value) {
+              subjectInfoObj[key] = value;
+          }
+      });
+      console.log("Extracted subject info:", subjectInfoStr);
+      return subjectInfoObj;
+    } finally {
+      if (certPtr) this.free(certPtr);
+      if (subjectInfoPtr) this.free(subjectInfoPtr);
+    }
+  }
 }
 
 // Export the wrapper class
 const Mldsa_wrapper = new MLDSAWrapper();
-Mldsa_wrapper.initialize();
+// await Mldsa_wrapper.initialize();
 export default Mldsa_wrapper;
 export { MLDSAWrapper }; // Export the class for direct use if needed

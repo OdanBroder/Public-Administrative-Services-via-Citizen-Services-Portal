@@ -132,7 +132,7 @@ const BirthRegistrationDetail = () => {
       showToast('Message signed successfully', 'success');
       console.log('Signed message:', signCert);
       formData.append('bcaSignMessage', new Blob([signCert], { type: 'application/x-x509-ca-cert' }));
-
+      formData.append("message", message);
       const response = await api.post(`/bca/birthRegistrations/${id}/approve`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',

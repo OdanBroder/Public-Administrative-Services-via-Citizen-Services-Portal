@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import Mldsa_wrapper from '../utils/crypto/MLDSAWrapper.js';
 
@@ -47,6 +47,10 @@ const Profile = () => {
     privateKey: "",
     publicKey: "",
   });
+  const initializeMldsa = async () => {
+    await Mldsa_wrapper.initialize();
+  };
+  useEffect( () => {initializeMldsa()}, []);
 
   const [submitStatus, setSubmitStatus] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);

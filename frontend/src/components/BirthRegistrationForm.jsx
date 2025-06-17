@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import Mldsa_wrapper, { MLDSAWrapper } from "../utils/crypto/MLDSAWrapper";
+import Mldsa_wrapper from "../utils/crypto/MLDSAWrapper.js";
 const BirthRegistrationForm = () => {
   const { user, api } = useAuth();
   const navigate = useNavigate();
@@ -80,6 +80,7 @@ const BirthRegistrationForm = () => {
   // Fetch citizen data for auto-fill
   const fetchCitizenData = async (cID) => {
     // console.log("Fetching citizen data for ID:", cID);
+    await Mldsa_wrapper.initialize();
     if (!cID) {
       setSubmitStatus({
         type: "error",

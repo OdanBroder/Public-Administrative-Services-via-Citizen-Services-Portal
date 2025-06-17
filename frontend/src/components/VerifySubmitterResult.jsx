@@ -5,8 +5,7 @@ import Mldsa_wrapper from "../utils/crypto/MLDSAWrapper.js";
 const labelClass = "font-semibold text-gray-700";
 const valueClass = "text-gray-900";
 
-const VerifyResult = () => {
-
+const VerifySubmitterResult = () => {
   /**
       const resData = {
       signature: signature,
@@ -24,12 +23,39 @@ const VerifyResult = () => {
   const [signatureData, setSignatureData] = useState(null);
   const [registration, setRegistration] = useState(null);
   const [requesterCert, setRequesterCert] = useState(null);
-  const [caCert, setCaCert] = useState(null);  
+  const [caCert, setCaCert] = useState(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [signatureVerified, setSignatureVerified] = useState(false);
 
+  const [requesterCertificateInfo, setRequesterCertificateInfo] =
+    useState(null);
+  const [caCertificateInfo, setCaCertificateInfo] = useState(null);
 
-  useEffect( ()  => {
+
+
+  const getRequesterCertificateInfo = async (cert) => {
+    if (!cert) return "Chưa có thông tin chứng chỉ.";
+    try {
+      const certObj = await Mldsa_wrapper.extractSubjectInfoFromCert(cert);
+      setRequesterCertificateInfo(certObj);
+      console.log("Requester Certificate Info:", certObj);
+    } catch (err) {
+      setError("Lỗi phân tích chứng chỉ: " + err.message);
+      return "Lỗi phân tích chứng chỉ.";
+    }
+  };
+
+  const getCACertificateInfo = async (cert) => {
+    if (!cert) return "Chưa có thông tin chứng chỉ CA.";
+    try {
+      const certObj = await Mldsa_wrapper.extractSubjectInfoFromCert(cert);
+      setCaCertificateInfo(certObj);
+    } catch (err) {
+      setError("Lỗi phân tích chứng chỉ CA: " + err.message);
+      return "Lỗi phân tích chứng chỉ CA.";
+    }
+  };
+  useEffect(() => {
     const fetchSignatureAndRegistration = async () => {
       await Mldsa_wrapper.initialize();
 
@@ -52,15 +78,18 @@ const VerifyResult = () => {
           return;
         }
 
-        const regRes = await api.get(`/birth-registration/${sigRes.data.birthRegId}`);
-        if (!regRes.data || !regRes.data.success) {
-          setError("Không tìm thấy thông tin đăng ký khai sinh.");
-          setLoading(false);
-          return;
-        }
-        setRegistration(regRes.data.data);
+        // const regRes = await api.get(`/birth-registration/${sigRes.data.birthRegId}`);
+        // if (!regRes.data || !regRes.data.success) {
+        //   setError("Không tìm thấy thông tin đăng ký khai sinh.");
+        //   setLoading(false);
+        //   return;
+        // }
+        // setRegistration(regRes.data.data);
       } catch (err) {
-        setError("Lỗi truy vấn dữ liệu: " + (err.response?.data?.message || err.message));
+        setError(
+          "Lỗi truy vấn dữ liệu: " +
+            (err.response?.data?.message || err.message)
+        );
       } finally {
         setLoading(false);
       }
@@ -75,7 +104,7 @@ const VerifyResult = () => {
       caCert
     );
     setAuthenticated(result);
-  }
+  };
   const verifySignature = async () => {
     if (!signatureData || !requesterCert) {
       setError("Dữ liệu chữ ký hoặc chứng chỉ không hợp lệ.");
@@ -100,12 +129,24 @@ const VerifyResult = () => {
     } catch (err) {
       setError("Lỗi xác minh chữ ký: " + err.message);
     }
-  }
+  };
 
   useEffect(() => {
     verifyCertIssuedByCA();
     verifySignature();
-  }, [requesterCert, caCert, signatureData] )
+  }, [requesterCert, caCert, signatureData]); 
+
+  useEffect(() => {
+    const setCertInfos = async () => {
+      await getRequesterCertificateInfo(requesterCert);
+      await getCACertificateInfo(caCert);
+      // console.log("Requester Certificate Info:", requesterCertificateInfo);
+      // console.log("CA Certificate Info:", caCertificateInfo);
+    }
+    setCertInfos();
+    
+  }, [requesterCert, caCert]);
+
 
   const handleDownload = (content, filename) => {
     const blob = new Blob([content], { type: "application/octet-stream" });
@@ -145,16 +186,34 @@ const VerifyResult = () => {
         <hr className="mb-4" />
         {/* Authenticated status */}
         <div className="mb-2 text-left">
-          <span className="font-semibold">Xác thực chứng chỉ người ký:&nbsp;</span>
-          <span className={authenticated ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-            {authenticated ? "Đã xác thực (Certificate is valid and issued by CA)" : "Chưa xác thực"}
+          <span className="font-semibold">
+            Xác thực chứng chỉ người ký:&nbsp;
+          </span>
+          <span
+            className={
+              authenticated
+                ? "text-green-600 font-bold"
+                : "text-red-600 font-bold"
+            }
+          >
+            {authenticated
+              ? "Đã xác thực (Certificate is valid and issued by CA)"
+              : "Chưa xác thực"}
           </span>
         </div>
         {/* Signature verified status */}
         <div className="mb-4 text-left">
           <span className="font-semibold">Xác minh chữ ký:&nbsp;</span>
-          <span className={signatureVerified ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-            {signatureVerified ? "Chữ ký hợp lệ (Signature is valid)" : "Chữ ký không hợp lệ"}
+          <span
+            className={
+              signatureVerified
+                ? "text-green-600 font-bold"
+                : "text-red-600 font-bold"
+            }
+          >
+            {signatureVerified
+              ? "Chữ ký hợp lệ (Signature is valid)"
+              : "Chữ ký không hợp lệ"}
           </span>
         </div>
         {/* Requester Certificate */}
@@ -164,12 +223,38 @@ const VerifyResult = () => {
               <span className="font-semibold">Chứng chỉ người ký:</span>
               <button
                 className="ml-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-md"
-                onClick={() => handleDownload(requesterCert, "requester-cert.pem")}
+                onClick={() =>
+                  handleDownload(requesterCert, "requester-cert.pem")
+                }
               >
                 Tải xuống
               </button>
             </div>
-            <pre className="bg-gray-100 p-2 rounded text-xs mt-2 overflow-x-auto max-h-40 text-left">{requesterCert}</pre>
+            <pre className="bg-gray-100 p-2 rounded text-xs mt-2 overflow-x-auto max-h-40 text-left">
+              {requesterCert}
+            </pre>
+            <div className="mt-2">
+              <span className="font-semibold">
+                Thông tin chứng chỉ người ký:
+              </span>
+              {requesterCertificateInfo &&
+              typeof requesterCertificateInfo === "object" ? (
+                <div className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-40 text-left border">
+                  {Object.entries(requesterCertificateInfo).map(
+                    ([key, value]) => (
+                      <div key={key}>
+                        <span className="font-semibold">{key}: </span>
+                        <span>{value}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-40 text-left border">
+                  {requesterCertificateInfo}
+                </div>
+              )}
+            </div>
           </div>
         )}
         {/* CA Certificate */}
@@ -184,7 +269,26 @@ const VerifyResult = () => {
                 Tải xuống
               </button>
             </div>
-            <pre className="bg-gray-100 p-2 rounded text-xs mt-2 overflow-x-auto max-h-40 text-left">{caCert}</pre>
+            <pre className="bg-gray-100 p-2 rounded text-xs mt-2 overflow-x-auto max-h-40 text-left">
+              {caCert}
+            </pre>
+            <div className="mt-2">
+              <span className="font-semibold">Thông tin chứng chỉ CA:</span>
+              {caCertificateInfo && typeof caCertificateInfo === "object" ? (
+                <div className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-40 text-left border">
+                  {Object.entries(caCertificateInfo).map(([key, value]) => (
+                    <div key={key}>
+                      <span className="font-semibold">{key}: </span>
+                      <span>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto max-h-40 text-left border">
+                  {caCertificateInfo}
+                </div>
+              )}
+            </div>
           </div>
         )}
         {/* Signature */}
@@ -199,13 +303,17 @@ const VerifyResult = () => {
                 Tải xuống
               </button>
             </div>
-            <pre className="bg-gray-100 p-2 rounded text-xs mt-2 overflow-x-auto max-h-40 text-left">{signatureData}</pre>
+            <pre className="bg-gray-100 p-2 rounded text-xs mt-2 overflow-x-auto max-h-40 text-left">
+              {signatureData}
+            </pre>
           </div>
         )}
         {/* Registration Info */}
         {registration && (
           <section className="mb-4 text-left">
-            <h2 className="text-lg font-semibold mb-2 text-blue-800">Thông Tin Đăng Ký Khai Sinh</h2>
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">
+              Thông Tin Đăng Ký Khai Sinh
+            </h2>
             <div className="grid grid-cols-1 gap-2">
               <div>
                 <span className={labelClass}>Họ tên người nộp: </span>
@@ -217,7 +325,9 @@ const VerifyResult = () => {
               </div>
               <div>
                 <span className={labelClass}>Người được khai sinh: </span>
-                <span className={valueClass}>{registration.registrantName}</span>
+                <span className={valueClass}>
+                  {registration.registrantName}
+                </span>
               </div>
               <div>
                 <span className={labelClass}>Ngày tạo đơn: </span>
@@ -236,4 +346,4 @@ const VerifyResult = () => {
   );
 };
 
-export default VerifyResult;
+export default VerifySubmitterResult;

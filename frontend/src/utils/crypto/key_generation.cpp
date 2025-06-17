@@ -412,3 +412,71 @@ int sign_certificate(
 
     return static_cast<size_t>(len);
 }
+
+/**
+ * @brief Extract the subject info from certificate
+ * @param cert_buffer {const char*}: x509 certificate buffer in pem format
+ * @param cert_len (size_t): cert_buffer's length
+ * @param subject_info {char *}: a return argument that return a subject_info
+ * @param subject_info_len (size_t): a buffer length of subject info
+ * @returns {int} indicate the actual length of subject_info, 0 if errors occur or failure
+ */
+int extract_subject_info_from_cert(
+    const char* cert_buffer,
+    size_t cert_len,
+    char* subject_info,
+    size_t subject_info_len
+) {
+    if (!cert_buffer || !subject_info || cert_len == 0 || subject_info_len == 0) {
+        return 0;
+    }
+    BIO_ptr cert_bio(BIO_new_mem_buf(cert_buffer, static_cast<int>(cert_len)), BIO_free_all);
+    if (!cert_bio) {
+        handle_openssl_error("BIO_new_mem_buf for cert");
+        return 0;
+    }
+    X509* cert = PEM_read_bio_X509(cert_bio.get(), nullptr, nullptr, nullptr);
+    if (!cert) {
+        handle_openssl_error("PEM_read_bio_X509");
+        return 0;
+    }
+
+    X509_NAME* subj = X509_get_subject_name(cert);
+    if (!subj) {
+        X509_free(cert);
+        handle_openssl_error("X509_get_subject_name");
+        return 0;
+    }
+
+    // Build subject string in the format: /CN=.../O=.../OU=... etc.
+    char buf[1024];
+    buf[0] = '\0';
+    int n_entries = X509_NAME_entry_count(subj);
+    for (int i = 0; i < n_entries; ++i) {
+        X509_NAME_ENTRY* entry = X509_NAME_get_entry(subj, i);
+        ASN1_OBJECT* obj = X509_NAME_ENTRY_get_object(entry);
+        ASN1_STRING* data = X509_NAME_ENTRY_get_data(entry);
+
+        char obj_buf[80];
+        OBJ_obj2txt(obj_buf, sizeof(obj_buf), obj, 1);
+        unsigned char* value = nullptr;
+        int value_len = ASN1_STRING_to_UTF8(&value, data);
+        if (value && value_len > 0) {
+            strncat(buf, "/", sizeof(buf) - strlen(buf) - 1);
+            strncat(buf, obj_buf, sizeof(buf) - strlen(buf) - 1);
+            strncat(buf, "=", sizeof(buf) - strlen(buf) - 1);
+            strncat(buf, (const char*)value, sizeof(buf) - strlen(buf) - 1);
+            OPENSSL_free(value);
+        }
+    }
+
+    int out_len = static_cast<int>(strlen(buf));
+    if ((size_t)out_len >= subject_info_len) {
+        X509_free(cert);
+        return 0;
+    }
+    strncpy(subject_info, buf, subject_info_len);
+    subject_info[subject_info_len - 1] = '\0';
+    X509_free(cert);
+    return out_len;
+}

@@ -47,5 +47,4 @@ export const fetchSignatureFromUUID = async (req, res) => {
     console.error("Error fetching signature:", error);
     res.status(500).send("Internal server error");
   }
-
 }

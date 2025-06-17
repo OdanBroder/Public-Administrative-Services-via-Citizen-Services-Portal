@@ -143,11 +143,7 @@ const AppContent = () => {
             // <div>HEHEHE</div>
           } />
           {/* Self-signed certificate */}
-          <Route path="/bca/self-signed-certificate" element={
-            <AuthorizedRoute required_role="BCA">
-              <SelfSignedCertificate />
-            </AuthorizedRoute>
-          } />
+
           
           {/* For warning Page */}
           <Route path="/unauthorized" element={<Unauthorized />} />

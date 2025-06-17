@@ -7,9 +7,6 @@ const router = express.Router();
 
 router.post("/", 
   authenticate, 
-  authorize("submit_request", {
-    requiredRoles: [ROLES.CITIZEN, ROLES.ADMIN]
-  }),
   upload, 
   encryptFileMiddleware,
   createCitizen

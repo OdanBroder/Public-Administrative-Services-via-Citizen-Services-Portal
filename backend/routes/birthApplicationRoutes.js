@@ -8,7 +8,8 @@ import {
   getBirthRegistrationById,
   getBirthRegistrationByApplicantId,
   changeBirthRegistrationStatus,
-  getBirthRegistrationSubmitterSignature
+  getBirthRegistrationSubmitterSignature,
+  getBirthRegistrationIssuerSignature
 } from '../controllers/birthRegistrationController.js';
 import { authenticate, authorize, ROLES } from '../middleware/authMiddleware.js';
 
@@ -74,4 +75,8 @@ router.get("/:id/signature",
   getBirthRegistrationSubmitterSignature
 )
 
+router.get("/:id/issuer-signature",
+  authenticate,
+  getBirthRegistrationIssuerSignature
+)
 export default router;

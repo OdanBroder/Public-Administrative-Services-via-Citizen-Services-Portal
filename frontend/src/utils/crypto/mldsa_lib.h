@@ -186,6 +186,14 @@ EXPOSE_WASM bool extract_pubkey_from_cert(const std::string& certificate_path, c
  * @return true if signature is valid, false otherwise (or on error).
  */
 EXPOSE_WASM bool verify_signature_with_cert(const char *certificate_buf, size_t certificate_len, const unsigned char *signature_buf, size_t signature_len, const char *message_chr, int message_len);
+
+EXPOSE_WASM int extract_subject_info_from_cert(
+    const char* cert_buffer,
+    size_t cert_len,
+    char* subject_info,
+    size_t subject_info_len
+);
+
 } // Extern "C"
 #endif //CRYPTO_LIB_H
 //
