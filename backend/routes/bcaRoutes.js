@@ -22,16 +22,7 @@ router.get('/birthRegistrations/:birthRegistrationId/signature',
   getSignatureById
 );
 
-router.post('/certificates/self-signed',
-    authenticate,
-    authorize('sign_certificate', {
-        requiredRoles: ROLES.BCA,
-        checkOfficeScope: true,
-        targetOfficeName: 'BCA'
-    }),
-    upload, 
-    submitCertificateRequest
-);
+
 
 // Get all pending birth registration applications
 router.get('/birthRegistrations', 
