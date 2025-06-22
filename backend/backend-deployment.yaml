@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portals-backend
+  labels:
+    app: portals-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portals-backend
+  template:
+    metadata:
+      labels:
+        app: portals-backend
+    spec:
+      containers:
+        - name: portals-backend
+          image: an3ii11/portals-backend:latest
+          ports:
+            - containerPort: 5000
+          securityContext:
+            privileged: true
+          env:
+            - name: NODE_ENV
+              value: "development"
+            - name: PORT
+              value: "5000"
+            - name: DB_HOST
+              value: "portal-db"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME
+              value: "citizen_services"
+            - name: DB_USER
+              value: "citizen_user"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: JWT_SECRET
+            - name: JWT_REFRESH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: JWT_REFRESH_SECRET
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: SMTP_HOST
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: SMTP_PORT
+            - name: SMTP_SECURE
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: SMTP_SECURE
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: SMTP_USER
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: SMTP_PASS
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: citizen-db-env
+                  key: SMTP_FROM
+            - name: FRONTEND_URL
+              value: "https://frontend"
+          volumeMounts:
+            - name: backend-data
+              mountPath: /app/data
+            - name: backend-working
+              mountPath: /app/working
+            - name: backend-uploads
+              mountPath: /app/uploads
+            - name: tpm-service
+              mountPath: /tmp/tpm-service
+            - name: dev-tpm0
+              mountPath: /dev/tpm0
+            - name: dev-tpmrm0
+              mountPath: /dev/tpmrm0
+      volumes:
+        - name: backend-data
+          emptyDir: {}
+        - name: backend-working
+          emptyDir: {}
+        - name: backend-uploads
+          emptyDir: {}
+        - name: tpm-service
+          emptyDir: {}
+        - name: dev-tpm0
+          hostPath:
+            path: /dev/tpm0
+            type: CharDevice
+        - name: dev-tpmrm0
+          hostPath:
+            path: /dev/tpmrm0
+            type: CharDevice

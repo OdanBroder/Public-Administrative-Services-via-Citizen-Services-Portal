@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: portals-bca
+  labels:
+    app: portals-bca
+spec:
+  type: ClusterIP
+  selector:
+    app: portals-bca
+  ports:
+    - port: 80
+      targetPort: 80

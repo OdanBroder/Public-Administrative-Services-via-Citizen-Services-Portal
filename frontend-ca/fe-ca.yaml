@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portals-ca
+  labels:
+    app: portals-ca
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portals-ca
+  template:
+    metadata:
+      labels:
+        app: portals-ca
+    spec:
+      containers:
+        - name: portals-ca
+          image: an3ii11/ca-portals:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: NODE_ENV
+              value: "production"
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: portals-citizen-nginx-config
