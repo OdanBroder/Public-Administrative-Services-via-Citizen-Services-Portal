@@ -7,6 +7,7 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3 TLSv1.2"
     nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-DSA-AES256-GCM-SHA384"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/service-upstream: "true"
 spec:
   ingressClassName: nginx
   tls:

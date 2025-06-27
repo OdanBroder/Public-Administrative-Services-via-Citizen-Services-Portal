@@ -2,21 +2,21 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# RUN addgroup -g 113 tss || true 
-# RUN adduser -u 106 -G tss -S tss
+RUN addgroup -g 113 tss || true 
+RUN adduser -u 106 -G tss -S tss
 
-# RUN apk update && \
-#     apk add --upgrade --no-cache \
-#         tpm2-tools \
-#         tpm2-abrmd \
-#         tpm2-tss \
-#         tpm2-tss-tctildr \
-#         tpm2-tss-tcti-device tpm2-tss-engine tpm2-tss-engine \
-#         dbus \
-#         sudo \
-#         shadow \
-#         util-linux && \
-#     rm -rf /var/cache/apk/* 
+RUN apk update && \
+    apk add --upgrade --no-cache \
+        tpm2-tools \
+        tpm2-abrmd \
+        tpm2-tss \
+        tpm2-tss-tctildr \
+        tpm2-tss-tcti-device tpm2-tss-engine tpm2-tss-engine \
+        dbus \
+        sudo \
+        shadow \
+        util-linux && \
+    rm -rf /var/cache/apk/* 
 
 # Handle tpm users
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

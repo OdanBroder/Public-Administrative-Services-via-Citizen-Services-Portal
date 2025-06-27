@@ -342,8 +342,8 @@ export const approveApplication = async (req, res) => {
     // Update application status
     await application.update({
       status: 'approved',
-      processed_by: bcaId,
-      processed_at: new Date()
+      processedBy: bcaId,
+      processedAt: new Date()
     });
 
     return res.status(200).json({

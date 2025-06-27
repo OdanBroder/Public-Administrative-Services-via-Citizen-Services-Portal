@@ -1,158 +1,56 @@
 # Public Administrative Services via Citizen Services Portal
 
-## Overview
+This project is a secure, modern web platform for digital public administrative services, enabling citizens and government agencies to interact, submit, and verify official documents online. The system is designed with a strong focus on security, privacy, and post-quantum cryptography.
 
-This project addresses the secure provision of public administrative services through a **Citizen Services Portal**, focusing on digital document validation, user authentication, and secure access. It leverages **post-quantum cryptographic techniques** and **QR code-based authentication** to ensure data privacy and integrity in government operations.
+## Key Features
 
----
+- **Post-Quantum Digital Signatures:**
+  - Utilizes ML-DSA  digital signatures for document signing and verification, ensuring security against quantum attacks.
+- **Role-Based Access:**
+  - Supports multiple user roles (Citizen, BCA, Police, CA, etc.) with tailored workflows, permissions and graphic interface
+- **Digital Document Validation:**
+  - All documents and signatures are cryptographically validated, with certificate chains and CA verification.
+- **QR Code Verification:**
+  - Provides QR code-based signature verification for fast, secure validation of digital documents.
+- **Secure File Handling:**
+  - Sensitive files (images, certificates, signatures) are encrypted and validated during upload and storage.
+- **Microservices Architecture:**
+  - Built with Node.js, Express, React, and NGINX, orchestrated via Docker and Kubernetes for scalability and reliability.
+- **Kubernetes-Native Deployment:**
+  - All services are containerized and deployed via Kubernetes, with NGINX Ingress for secure HTTPS routing and multi-domain support.
 
-## 🔍 Application Scenarios
+## Security Highlights
 
-### 1. Gaps
-- Identification of **security vulnerabilities** and gaps in current citizen service portals.
-- Risks include **data breaches**, **unauthorized access**, **lack of encryption**, and **inefficient authentication mechanisms**.
+- **FALCON/ML-DSA Signatures:**
+  - Ensures documents are tamper-proof and verifiable, even in a post-quantum world.
+- **Certificate Authority (CA) Workflows:**
+  - Supports certificate requests, signing, and validation for users and agencies.
+- **Strict Security Headers:**
+  - Enforces Content Security Policy, HSTS, and other HTTP security headers at the gateway.
 
-### 2. Reliable Arguments for the Gaps
-- Real-world incidents highlight the need for improvement:
-  - *India Aadhaar Leak (2018)* – exposed personal data of over 1.1 billion citizens.
-  - *Estonian ID Card Vulnerability (2017)* – flaws in cryptographic keys used in ID cards.
-- These breaches underscore the urgency for **post-quantum secure solutions**.
+## Application Scenarios
 
-### 3. Motivations
-- Government services handle **highly sensitive personal and national data**.
-- Ensuring **privacy, integrity**, and **secure digital access** is crucial for citizen trust and national security.
+- **Birth Registration:**
+  - Citizens can securely submit and track birth registration applications, with digital signatures and QR-based verification.
+- **User Certificate Management:**
+  - Users and authorities can generate, sign, and verify digital certificates using post-quantum algorithms.
+- **Administrative Workflows:**
+  - Agencies process, approve, and sign documents digitally, with cryptographic validation.
 
----
+## Technologies Used
 
-## 🧩 Desired Functional and Security Features
+- **Backend:** Node.js, Express, Sequelize, MySQL
+- **Frontend:** React, Tailwind CSS
+- **Cryptography:** ML-DSA, OpenSSL, WASM modules
+- **Infrastructure:** Docker, Kubernetes, NGINX Ingress
 
-### Functional Features
-- ✅ **Secure Digital Signatures** using FALCON.
-- ✅ **Efficient Authentication** and **Key Agreement**.
-- ✅ **QR Code Authentication** for seamless access and data gathering.
+## Deployment
 
-### Security Features
-- 🔐 **FALCON Digital Signatures** for document validation and integrity.
-- 🔐 **QR Code-based Authentication** and **Access Control**.
-- 🔐 **Robust Key Exchange Protocols** to prevent impersonation and eavesdropping.
-
----
-
-## 👥 Related Stakeholders
-
-- 🏛️ **Government Agencies**: Manage and provide services.
-- 👤 **Citizens**: Use the portal for administrative tasks.
-- 🧑‍💻 **Administrators**: Maintain and monitor the portal's operation and security.
-
----
-
-## 🔐 Algorithms and Technologies
-
-### ✅ Post-Quantum Digital Signature – **FALCON**
-- Provides **quantum-resistant digital signatures** for securing documents and transactions.
-
-### ✅ QR Codes
-- Used for:
-  - User **authentication**
-  - **Data gathering**
-  - **Access control**
-
-### ✅ Authentication & Key Agreement
-- Ensures **secure login**, **session management**, and **data confidentiality**.
+- **Kubernetes-native:**
+  - All services are containerized and deployed via Kubernetes, with Ingress for secure HTTPS routing and multi-domain support.
+- **TLS & Security:**
+  - Each service domain uses its own TLS certificate, managed via Kubernetes secrets and Ingress.
 
 ---
 
-## 🏗️ Solution Architecture
-
-- Web-based **Citizen Services Portal** with integrated:
-  - 🔏 FALCON-based digital document signing
-  - 🔍 QR Code user authentication system
-  - 🔒 Robust key agreement and access control mechanisms
-
----
-
-## ⚙️ Functional Features in Detail
-
-- **Digital Signatures**:
-  - FALCON signatures to validate documents.
-- **QR Code Authentication**:
-  - Login via QR scanning to verify identity.
-- **Key Agreement**:
-  - Cryptographically secure handshake for all user sessions.
-
----
-
-## 🛡️ Security Features in Detail
-
-- **Integrity & Authenticity**:
-  - FALCON ensures documents are unaltered and legitimate.
-- **Access Control**:
-  - QR-based role-based access levels for citizens and administrators.
-- **Session Security**:
-  - Mutual authentication and encrypted sessions using modern cryptography.
-
----
-
-## 🧪 Implementation and Testing
-
-### Tools & Libraries
-- 🌐 Programming: Python / JavaScript / Node.js
-- 🔐 Cryptography: [PQClean](https://github.com/PQClean/PQClean), OpenSSL (post-quantum branch)
-- 📷 QR Code: `qrcode`, `zxing`, or equivalent libraries
-
-### Experimental Scenarios
-- Simulate:
-  - Citizen login using QR codes
-  - Document signing and submission
-- Evaluate:
-  - Latency and performance of FALCON signatures
-  - User experience with QR authentication
-
-### Testing Goals
-- ✅ Validate secure functionality
-- ✅ Identify vulnerabilities in authentication and document flow
-
----
-
-## 🚀 Deployment Plan
-
-- Deploy portal in **controlled government environment**.
-- Monitor:
-  - Security metrics (e.g., penetration test results)
-  - User activity and authentication logs
-
----
-
-## 📚 References
-
-- Bernstein, D. J., et al. (2017). *FALCON: Fast-Fourier Lattice-based Compact Signatures over NTRU*.
-- NIST PQC Project: https://csrc.nist.gov/Projects/post-quantum-cryptography
-- OWASP Top 10 Security Risks: https://owasp.org
-- QR Code Security Best Practices: ISO/IEC 18004
-
----
-
-## 🧾 Assessment Rubric
-
-| Criteria                         | Weight |
-|----------------------------------|--------|
-| 🔍 Quality of Research           | 15%    |
-| 🧠 Algorithm Selection           | 10%    |
-| 🏗️ Solution Architecture        | 15%    |
-| ⚙️ Functional Features           | 20%    |
-| 🔐 Security Features             | 20%    |
-| 🧪 Implementation & Testing      | 10%    |
-| 📝 Presentation & Documentation | 10%    |
-
----
-
-## 🧑‍💻 Contributors
-
-- Đoàn Đức Anh
-- [Your Teammates' Names Here]
-
----
-
-## 📌 License
-
-This project is licensed under the [MIT License](LICENSE).
+This portal demonstrates a practical, secure, and scalable approach to digital government services, ready for the challenges of the post-quantum era.

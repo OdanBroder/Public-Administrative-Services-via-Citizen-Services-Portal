@@ -43,12 +43,6 @@ export const getApplicantQrSignature = async (req,res) => {
 
   const signature = await fs.promises.readFile(`/tmp/${randomPath}.sig`);
   const signatureB64 = Buffer.from(signature).toString("base64");
-  /* {"NGUYEN THANH AN cho phep truy cap||signature (duoc ky boi NGUYEN THNAH AN)||"url: hien thi thong tin application" }" */
-  // In a real application, you would retrieve signature and message based on the ID
-  // For example, from a database or another service.
-  // if (!signature || !message) {
-  //   return res.status(404).send("User signature not found");
-  // }
 
   const combinedString = `applicant#${gonnaSignMessage}##${signatureB64}##`;
 

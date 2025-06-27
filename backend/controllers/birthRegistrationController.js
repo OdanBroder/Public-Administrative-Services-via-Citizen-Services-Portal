@@ -494,7 +494,7 @@ export const getBirthRegistrationSubmitterSignature = async (req, res) => {
         message: "Không tìm thấy chữ ký của người nộp đơn"
       });
     }
-    const signatureUrl = `https://localhost:44300/signature/requester/${signature.UUID}`;
+    const signatureUrl = `https://citizen-citizen-service-portal.free.nf/signature/requester/${signature.UUID}`;
     res.status(200).json({
       success: true,
       data: signatureUrl
@@ -521,7 +521,7 @@ export const getBirthRegistrationIssuerSignature = async (req, res) => {
         message: "Không tìm thấy chữ ký của cơ quan chức năng"
       });
     }
-    const signatureUrl = `https://localhost:44300/signature/issuer/${signature.UUID}`;
+    const signatureUrl = `https://citizen-citizen-service-portal.free.nf/signature/issuer/${signature.UUID}`;
     res.status(200).json({
       success: true,
       data: signatureUrl

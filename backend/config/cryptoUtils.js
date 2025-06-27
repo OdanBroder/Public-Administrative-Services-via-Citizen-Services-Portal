@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import tpmService from '../utils/crypto/tpmController.js';
-// IMPORTANT: Store this key securely. Do not hardcode in a real application.
-// Consider using environment variables or a key management service.
+
 const {key} = await tpmService.unsealAESKey();
 const ENCRYPTION_KEY = key;
 const ALGORITHM = 'aes-256-gcm';
