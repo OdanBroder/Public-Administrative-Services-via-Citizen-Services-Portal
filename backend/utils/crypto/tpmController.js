@@ -639,7 +639,7 @@ class ScalableTPMService {
         }
     }
 }
-// new ScalableTPMService();
+new ScalableTPMService();
 const tpmService = new ScalableTPMService({
     tempDir: '/tmp/tpm-service',
     sealedKeyStorage: '/app/data/sealed-keys'});
@@ -656,4 +656,3 @@ const encryptingKey = await tpmService.generateAndSealEncryptingKey({
 });
 
 export default tpmService;
-export { tpmService, handle, AESContext, encryptingKey };

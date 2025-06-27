@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: portals-backend
+  labels:
+    app: portals-backend
+spec:
+  selector:
+    app: portals-backend
+  ports:
+    - name: portals-backend-port
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP

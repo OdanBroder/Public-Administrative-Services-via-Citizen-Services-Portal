@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: portals-citizen
+  labels:
+    app: portals-citizen
+spec:
+  type: ClusterIP
+  selector:
+    app: portals-citizen
+  ports:
+    - port: 80
+      targetPort: 80

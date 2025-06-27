@@ -40,13 +40,13 @@ const VerifyIssuerResult = () => {
           return;
         }
 
-        const regRes = await api.get(`/birth-registration/${sigRes.data.birthRegId}`);
-        if (!regRes.data || !regRes.data.success) {
-          setError("Không tìm thấy thông tin đăng ký khai sinh.");
-          setLoading(false);
-          return;
-        }
-        setRegistration(regRes.data.data);
+        // const regRes = await api.get(`/birth-registration/${sigRes.data.birthRegId}`);
+        // if (!regRes.data || !regRes.data.success) {
+        //   setError("Không tìm thấy thông tin đăng ký khai sinh.");
+        //   setLoading(false);
+        //   return;
+        // }
+        // setRegistration(regRes.data.data);
       } catch (err) {
         setError("Lỗi truy vấn dữ liệu: " + (err.response?.data?.message || err.message));
       } finally {

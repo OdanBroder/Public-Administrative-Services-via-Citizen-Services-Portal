@@ -1,0 +1,74 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portals-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3 TLSv1.2"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-DSA-AES256-GCM-SHA384"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/service-upstream: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - citizen-citizen-service-portal.free.nf
+      secretName: citizen-tls 
+    - hosts:
+        - bca-citizen-service-portal.free.nf
+      secretName: bca-tls
+    - hosts:
+        - ca-citizen-service-portal.free.nf
+      secretName: ca-tls
+  rules:
+    - host: citizen-citizen-service-portal.free.nf
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: portals-backend
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: portals-citizen
+                port:
+                  number: 80
+    - host: bca-citizen-service-portal.free.nf
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: portals-backend
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: portals-bca
+                port:
+                  number: 80
+    - host: ca-citizen-service-portal.free.nf
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: portals-backend
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: portals-ca
+                port:
+                  number: 80

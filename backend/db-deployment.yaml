@@ -1,0 +1,46 @@
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portals-database
+  labels:
+    app: portals-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portals-database
+  template:
+    metadata:
+      labels:
+        app: portals-database
+    spec:
+      containers:
+      - name: portals-database
+        image: an3ii11/portals-database:latest
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: portals-db-data
+        ports:
+        - name: portals-db-port
+          containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: citizen-db-env
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          value: "citizen_services"
+        - name: MYSQL_USER
+          value: "citizen_user"
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: citizen-db-env
+              key: DB_PASSWORD
+      volumes:
+      - name: portals-db-data
+        persistentVolumeClaim:
+          claimName: portals-db-pvc

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: portals-citizen-nginx-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name citizen-citizen-service-portal.free.nf bca-citizen-service-portal.free.nf ca-citizen-service-portal.free.nf;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+

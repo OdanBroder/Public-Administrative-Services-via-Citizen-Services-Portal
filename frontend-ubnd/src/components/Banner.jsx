@@ -7,8 +7,11 @@ export default function Banner() {
       style={{ backgroundImage: `url(${trongDongImage})` }}
     >
       <div className="ml-4 text-red-600 text-3xl font-bold">
-        Cổng dịch vụ công trực tuyến
+        <div>Cổng dịch vụ công trực tuyến</div>
+        <div className='text-xl'>Cổng cơ quan</div>
       </div>
+
+
     </div>
   );
 }

@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portals-bca
+  labels:
+    app: portals-bca
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portals-bca
+  template:
+    metadata:
+      labels:
+        app: portals-bca
+    spec:
+      containers:
+        - name: portals-bca
+          image: an3ii11/bca-portals:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: NODE_ENV
+              value: "production"
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: portals-citizen-nginx-config
